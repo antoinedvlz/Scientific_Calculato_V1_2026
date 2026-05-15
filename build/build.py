@@ -61,6 +61,7 @@ def main() -> None:
     html = html.replace("<head>", f"<head>\n<!-- Grace build {stamp} -->", 1)
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding="utf-8")
+    (ROOT / "index.html").write_text(html, encoding="utf-8")
     size_kb = len(html.encode("utf-8")) / 1024
     print(f"\u2713 Build OK \u2192 {OUT} ({size_kb:.1f} ko)")
 
