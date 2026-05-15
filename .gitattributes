@@ -1,0 +1,11 @@
+# Génère les bonnes proportions dans la barre de langages GitHub.
+
+# Le fichier construit (index.html à la racine + dist/grace.html) est
+# du code généré : on l'exclut du décompte de langages.
+index.html       linguist-generated=true
+dist/*           linguist-generated=true
+
+# Force la détection des fichiers HTML / CSS / JS dans src/.
+src/**/*.html    linguist-detectable=true
+src/**/*.css     linguist-detectable=true
+src/**/*.js      linguist-detectable=true
