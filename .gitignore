@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Claude Code : worktrees, sessions, fichiers internes
+.claude/
+
+# Éditeurs / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (si installé un jour)
+node_modules/
+npm-debug.log*
+
+# Logs et temp
+*.log
+.cache/

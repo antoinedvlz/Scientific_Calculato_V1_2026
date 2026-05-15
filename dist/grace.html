@@ -1,0 +1,4440 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- Grace build 2026-05-15T17:33:17+00:00 -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1024">
+  <title>Grace</title>
+
+  <!-- Librairies externes (CDN) -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        crossorigin="anonymous">
+  <script defer
+          src="https://cdn.jsdelivr.net/npm/mathjs@13.0.3/lib/browser/math.min.js"
+          crossorigin="anonymous"></script>
+  <script defer
+          src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+          crossorigin="anonymous"></script>
+
+  <!-- Styles internes -->
+  <style>
+/* ============================================================
+   Design tokens — Grace.
+   Palette inspirée NumWorks : jaune signature, blancs cassés,
+   contrastes francs. Bascule clair/sombre via [data-theme].
+   ============================================================ */
+
+:root {
+  /* Rayons : volontairement petits, papier/calculatrice. */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+
+  /* Espacement : grille de 4px. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* Typographies — empilées sans dépendance externe. */
+  --font-sans: "Inter", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-num:  "Iowan Old Style", "Charter", Georgia, serif; /* nombres : un peu de chair */
+
+  --t-fast: 90ms cubic-bezier(.2,.7,.3,1);
+  --t-mid:  180ms cubic-bezier(.2,.7,.3,1);
+
+  /* Couleurs absolues partagées. */
+  --c-yellow: #fcc92a;
+  --c-yellow-deep: #e8b400;
+  --c-red:    #d4452b;
+  --c-blue:   #2e6bd4;
+  --c-green:  #2d8a4a;
+  --c-purple: #7a4eb0;
+}
+
+/* ============== Thème clair ============== */
+[data-theme="light"] {
+  --bg:         #f3efe7;   /* papier cassé */
+  --bg-2:       #faf6ee;   /* surface élevée */
+  --bg-3:       #ffffff;   /* champs */
+  --bg-sunk:    #ece6da;   /* enfoncé (sidebar) */
+  --ink:        #1c1a17;   /* texte principal */
+  --ink-2:      #4a4742;
+  --ink-3:      #8a857e;
+  --ink-4:      #b6b1a8;
+  --line:       #d8d2c6;
+  --line-2:     #c4bdae;
+  --accent:     var(--c-yellow);
+  --accent-deep:var(--c-yellow-deep);
+  --on-accent:  #1c1a17;
+  --good:       var(--c-green);
+  --bad:        var(--c-red);
+  --info:       var(--c-blue);
+  --mark:       #fff3b0;   /* surlignage */
+  --grid:       rgba(0,0,0,.05);
+}
+
+/* ============== Thème sombre ============== */
+[data-theme="dark"] {
+  --bg:         #16161a;
+  --bg-2:       #1d1d22;
+  --bg-3:       #25252c;
+  --bg-sunk:    #111114;
+  --ink:        #ece9e3;
+  --ink-2:      #b9b4ab;
+  --ink-3:      #7d7a73;
+  --ink-4:      #4e4b46;
+  --line:       #2e2e36;
+  --line-2:     #3a3a44;
+  --accent:     var(--c-yellow);
+  --accent-deep:var(--c-yellow-deep);
+  --on-accent:  #1c1a17;
+  --good:       #59c576;
+  --bad:        #ff6b58;
+  --info:       #6fa4ff;
+  --mark:       #5a4a14;
+  --grid:       rgba(255,255,255,.04);
+}
+
+</style>
+  <style>
+/* ============================================================
+   base.css — Layout général + composants partagés.
+   Note : chaque app peut ajouter ses propres règles préfixées
+   (.calculs- / .vkb- / .periodique- / .units- / etc.).
+   ============================================================ */
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--bg);
+  overflow: hidden;
+  /* Texture papier subtile en clair, plate en sombre. */
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+}
+hr { border: 0; border-top: 1px solid var(--line); margin: var(--s-3) 0; }
+::selection { background: var(--mark); color: var(--ink); }
+
+/* ============== Grille principale ============== */
+#app {
+  display: grid;
+  grid-template-columns: 232px 1fr auto;
+  height: 100vh;
+}
+
+/* ============== Sidebar gauche ============== */
+#sidebar {
+  background: var(--bg-sunk);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-3) var(--s-2) var(--s-2);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-2) var(--s-3);
+}
+.brand-mark {
+  width: 32px; height: 32px;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-sm);
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+}
+.brand-name {
+  font-weight: 700;
+  letter-spacing: -.01em;
+  font-size: 15px;
+}
+.brand-tag {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+#app-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--s-1) 0;
+}
+.app-link {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 6px var(--s-2);
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink-2);
+  font-size: 13px;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.app-link:hover { background: var(--bg-3); color: var(--ink); }
+.app-link.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+}
+.app-link.disabled {
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+.app-link.disabled:hover { background: transparent; color: var(--ink-4); }
+.app-link .icon {
+  font-family: var(--font-num);
+  font-size: 15px;
+  text-align: center;
+  opacity: .9;
+}
+.app-link.active .icon { opacity: 1; }
+.app-link .shortcut {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-4);
+  letter-spacing: .04em;
+}
+.app-link.active .shortcut { color: var(--on-accent); opacity: .7; }
+
+.sidebar-footer {
+  display: flex;
+  gap: var(--s-1);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+  margin-top: var(--s-2);
+}
+.icon-btn {
+  flex: 1;
+  height: 30px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 14px;
+  transition: all var(--t-fast);
+}
+.icon-btn:hover { background: var(--bg); color: var(--ink); border-color: var(--line-2); }
+.icon-btn.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-deep);
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+}
+
+/* ============== Zone principale ============== */
+#main {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* En-tête commun à toutes les apps. */
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5) var(--s-2);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.app-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+.app-subtitle {
+  color: var(--ink-3);
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+.app-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* Segments style "calculator pill". */
+.seg {
+  display: inline-flex;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  height: 28px;
+}
+.seg > button {
+  padding: 0 var(--s-3);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink-2);
+  letter-spacing: .04em;
+}
+.seg > button:last-child { border-right: 0; }
+.seg > button:hover { background: var(--bg); color: var(--ink); }
+.seg > button.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* Boutons */
+.btn {
+  height: 28px;
+  padding: 0 var(--s-3);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 12px;
+  transition: all var(--t-fast);
+}
+.btn:hover { background: var(--bg); border-color: var(--line-2); }
+.btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-deep);
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+  font-weight: 600;
+}
+.btn.primary:hover { background: var(--accent-deep); }
+.btn.danger:hover { color: var(--bad); border-color: var(--bad); }
+
+/* Champs */
+.field {
+  height: 28px;
+  padding: 0 var(--s-2);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  transition: border-color var(--t-fast);
+}
+.field:focus { border-color: var(--accent); }
+
+/* ============== Coming soon (placeholder) ============== */
+.coming-soon {
+  margin: auto;
+  text-align: center;
+  color: var(--ink-3);
+  padding: var(--s-6);
+  max-width: 420px;
+}
+.coming-soon h2 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 36px;
+  margin: 0 0 var(--s-3);
+  color: var(--ink-2);
+}
+.coming-soon p { margin: 0 0 var(--s-3); }
+
+/* ============== App Calculs ============== */
+.calculs-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.history {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--s-3);
+}
+.history-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--ink-3);
+  padding: var(--s-4);
+}
+.history-empty .tips {
+  margin-top: var(--s-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-4);
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--s-3);
+  max-width: 380px;
+  margin-inline: auto;
+}
+.hist-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-left: 3px solid var(--line);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.hist-entry:hover { border-left-color: var(--accent); }
+.hist-input, .hist-output {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r-xs);
+  overflow-x: auto;
+  font-size: 15px;
+}
+.hist-input { color: var(--ink-3); }
+.hist-input:hover { background: var(--mark); color: var(--ink); }
+.hist-output {
+  align-self: flex-end;
+  font-size: 17px;
+  font-family: var(--font-num);
+}
+.hist-output:hover { background: var(--mark); }
+.hist-error {
+  color: var(--bad);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.input-area {
+  border-top: 1px solid var(--line);
+  background: var(--bg-2);
+  padding: var(--s-3) var(--s-4);
+}
+.input-preview {
+  min-height: 42px;
+  padding: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-2);
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  color: var(--ink);
+}
+.input-preview.empty {
+  color: var(--ink-4);
+  font-size: 12px;
+  font-style: italic;
+  border-style: dashed;
+}
+.input-preview.error {
+  color: var(--bad);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.input-row {
+  display: flex;
+  gap: var(--s-2);
+}
+.input-line {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: 10px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  outline: none;
+}
+.input-line:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--mark); }
+.input-row .btn.primary {
+  height: auto;
+  min-width: 90px;
+  font-size: 14px;
+}
+
+.vars-panel {
+  padding: 6px var(--s-5);
+  font-size: 12px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  border-top: 1px dashed var(--line);
+  background: var(--bg-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  max-height: 70px;
+  overflow-y: auto;
+}
+.var-chip {
+  padding: 2px 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  cursor: pointer;
+}
+.var-chip:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent-deep); }
+
+/* ============== Clavier virtuel ============== */
+#vkb {
+  width: 320px;
+  background: var(--bg-sunk);
+  border-left: 1px solid var(--line);
+  padding: var(--s-3);
+  overflow-y: auto;
+}
+.vkb-section { margin-bottom: var(--s-4); }
+.vkb-section h4 {
+  margin: 0 0 var(--s-2);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+}
+.vkb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.vkb-key {
+  height: 36px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  transition: all var(--t-fast);
+  box-shadow: inset 0 -2px 0 var(--line);
+  color: var(--ink);
+}
+.vkb-key:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-deep);
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+}
+.vkb-key:active { transform: translateY(1px); box-shadow: none; }
+.vkb-key.wide { grid-column: span 2; }
+
+/* ============================================================
+   Apps spécifiques
+   ============================================================ */
+
+/* ----- App Tableau périodique ----- */
+.periodique {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.periodique-toolbar {
+  padding: var(--s-3) var(--s-5);
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  flex-wrap: wrap;
+}
+.periodique-toolbar .legend {
+  display: flex;
+  gap: var(--s-3);
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+  flex-wrap: wrap;
+}
+.legend-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend-dot::before {
+  content: "";
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.periodique-grid {
+  flex: 1;
+  overflow: auto;
+  padding: var(--s-3) var(--s-5) var(--s-4);
+  display: grid;
+  grid-template-columns: repeat(18, minmax(46px, 1fr));
+  gap: 3px;
+  align-content: start;
+}
+.periodique-grid.compact { grid-template-columns: repeat(18, minmax(34px, 1fr)); }
+.el {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
+}
+.el:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  z-index: 2;
+}
+.el.dim { opacity: .15; pointer-events: none; }
+.el .z { font-size: 9px; color: var(--ink-3); text-align: left; line-height: 1; }
+.el .sym {
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-size: 18px;
+  text-align: center;
+  line-height: 1;
+  color: var(--ink);
+}
+.el .mass { font-size: 8px; color: var(--ink-3); text-align: center; }
+
+/* Catégories : couleurs de fond pastel. */
+.el[data-cat="alcalin"]        { background: #fde2e2; }
+.el[data-cat="alcalino-terreux"]{ background: #fde7c8; }
+.el[data-cat="transition"]     { background: #f5e3d0; }
+.el[data-cat="post-transition"]{ background: #e5e8e0; }
+.el[data-cat="metalloide"]     { background: #d8e6cd; }
+.el[data-cat="non-metal"]      { background: #d0e8f0; }
+.el[data-cat="halogene"]       { background: #d6d4ec; }
+.el[data-cat="gaz-noble"]      { background: #ecd6e6; }
+.el[data-cat="lanthanide"]     { background: #fad7e1; }
+.el[data-cat="actinide"]       { background: #f9d3c1; }
+.el[data-cat="inconnu"]        { background: #e0ddd5; }
+[data-theme="dark"] .el { color: var(--ink); }
+[data-theme="dark"] .el[data-cat="alcalin"]         { background: #5a2828; }
+[data-theme="dark"] .el[data-cat="alcalino-terreux"]{ background: #5a3a1c; }
+[data-theme="dark"] .el[data-cat="transition"]      { background: #4a3a26; }
+[data-theme="dark"] .el[data-cat="post-transition"] { background: #353a2c; }
+[data-theme="dark"] .el[data-cat="metalloide"]      { background: #2c4a30; }
+[data-theme="dark"] .el[data-cat="non-metal"]       { background: #1e3e4a; }
+[data-theme="dark"] .el[data-cat="halogene"]        { background: #353258; }
+[data-theme="dark"] .el[data-cat="gaz-noble"]       { background: #4a2e44; }
+[data-theme="dark"] .el[data-cat="lanthanide"]      { background: #4a2638; }
+[data-theme="dark"] .el[data-cat="actinide"]        { background: #4a2e1c; }
+
+/* Légende : on lui assigne les mêmes couleurs via une classe sœur. */
+.legend-dot.alcalin         { color: #d4452b; }
+.legend-dot.alcalino-terreux{ color: #c47514; }
+.legend-dot.transition      { color: #9c6a3a; }
+.legend-dot.post-transition { color: #6b7e4a; }
+.legend-dot.metalloide      { color: #3e7a4a; }
+.legend-dot.non-metal       { color: #2e6bd4; }
+.legend-dot.halogene        { color: #5a4eb0; }
+.legend-dot.gaz-noble       { color: #a04a90; }
+.legend-dot.lanthanide      { color: #c44676; }
+.legend-dot.actinide        { color: #c45a30; }
+
+/* Détail élément (panneau de droite) */
+.el-detail {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 400px;
+  background: var(--bg-2);
+  border-left: 1px solid var(--line);
+  padding: var(--s-4) var(--s-5);
+  overflow-y: auto;
+  box-shadow: -4px 0 16px rgba(0,0,0,.08);
+  z-index: 10;
+  display: none;
+}
+.el-detail.open { display: block; }
+.el-detail .close {
+  position: absolute; top: var(--s-3); right: var(--s-3);
+  background: var(--bg-3); border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  width: 28px; height: 28px;
+  cursor: pointer;
+}
+.el-detail .symbig {
+  font-family: var(--font-num);
+  font-size: 92px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  margin: 0;
+}
+.el-detail .nm {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 28px;
+  margin: 4px 0 var(--s-3);
+}
+.el-detail .row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: var(--s-2);
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px dotted var(--line);
+}
+.el-detail .row .k { color: var(--ink-3); }
+.el-detail .row .v { color: var(--ink); font-family: var(--font-mono); }
+.el-detail h3 {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+/* ----- App Unités ----- */
+.units {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  overflow: hidden;
+}
+.units-cats {
+  border-right: 1px solid var(--line);
+  background: var(--bg-2);
+  overflow-y: auto;
+  padding: var(--s-2);
+}
+.units-cat {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+}
+.units-cat:hover { background: var(--bg-3); }
+.units-cat.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.units-panel { padding: var(--s-5); overflow-y: auto; }
+.units-input {
+  display: grid;
+  grid-template-columns: 1fr 140px auto 140px;
+  gap: var(--s-2);
+  align-items: center;
+  padding: var(--s-3);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.units-input .arrow { color: var(--ink-3); text-align: center; font-size: 20px; }
+.units-input input.value-in {
+  height: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--bg-3); font-family: var(--font-num); font-size: 17px;
+}
+.units-input .result {
+  height: 36px;
+  display: flex; align-items: center;
+  padding: 0 10px;
+  background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: var(--font-num); font-size: 17px;
+}
+.units-list {
+  margin-top: var(--s-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--s-2);
+}
+.units-list .uitem {
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  display: flex; justify-content: space-between;
+  transition: all var(--t-fast);
+}
+.units-list .uitem:hover { background: var(--mark); }
+.units-list .uitem.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-deep);
+  font-weight: 600;
+}
+.units-list .uitem .unit-name { color: var(--ink-3); font-style: italic; }
+.units-list .uitem.active .unit-name { color: var(--on-accent); opacity: .8; }
+
+.units-prefix-table {
+  margin-top: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.units-prefix-row {
+  display: grid;
+  grid-template-columns: 80px 80px 1fr 1fr;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.units-prefix-row > div {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.units-prefix-row.head {
+  background: var(--bg-2);
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+.units-prefix-row:last-child > div { border-bottom: 0; }
+
+/* ----- App Constantes ----- */
+.constants {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+.constants-search {
+  padding: var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--line);
+  display: flex; gap: var(--s-3); background: var(--bg-2);
+}
+.constants-search input {
+  flex: 1; height: 32px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--bg-3); font-family: var(--font-mono);
+}
+.constants-list { overflow-y: auto; padding: var(--s-3) var(--s-5); }
+.const-card {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  margin-bottom: var(--s-2);
+  background: var(--bg-2);
+  cursor: pointer;
+}
+.const-card:hover { border-color: var(--accent); background: var(--bg-3); }
+.const-card .sym {
+  font-family: var(--font-num);
+  font-size: 24px;
+  font-style: italic;
+  text-align: center;
+  color: var(--ink);
+}
+.const-card .desc { font-size: 13px; color: var(--ink-2); }
+.const-card .desc .nm { font-weight: 600; }
+.const-card .desc .cat {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  margin-left: var(--s-2);
+}
+.const-card .val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ----- App Réglages ----- */
+.settings { padding: var(--s-5); overflow-y: auto; flex: 1; }
+.settings .group {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  margin-bottom: var(--s-3);
+}
+.settings .group h3 {
+  margin: 0; padding: 10px var(--s-3);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+}
+.settings .group .row {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 10px var(--s-3);
+  border-bottom: 1px solid var(--line);
+}
+.settings .group .row:last-child { border-bottom: 0; }
+.settings .group .row .lbl { font-size: 13px; }
+.settings .group .row .hlp { font-size: 11px; color: var(--ink-3); }
+
+/* ----- Tables génériques (équations, stats, suites…) ----- */
+.gtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.gtable th, .gtable td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.gtable th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-3); background: var(--bg-2);
+  font-weight: 600;
+}
+.gtable tbody tr:hover { background: var(--bg-2); }
+.gtable td.num { text-align: right; font-family: var(--font-num); }
+
+/* Pads tab/zone d'app génériques */
+.app-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-5);
+}
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--s-3);
+}
+.card h3 {
+  margin: 0 0 var(--s-2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+}
+.card .res {
+  font-family: var(--font-num);
+  font-size: 18px;
+}
+
+/* Tableur */
+.spreadsheet {
+  flex: 1;
+  overflow: auto;
+}
+.spreadsheet table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.spreadsheet th, .spreadsheet td {
+  border: 1px solid var(--line);
+  padding: 0;
+  background: var(--bg-3);
+}
+.spreadsheet th {
+  background: var(--bg-2);
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 8px;
+  text-align: center;
+  position: sticky;
+  z-index: 1;
+}
+.spreadsheet th.col { top: 0; }
+.spreadsheet th.row { left: 0; }
+.spreadsheet th.corner { top: 0; left: 0; z-index: 2; }
+.spreadsheet td input {
+  width: 100%;
+  height: 100%;
+  min-width: 80px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+}
+.spreadsheet td.computed input { color: var(--info); }
+.spreadsheet td.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Petit ruban d'aide en bas d'une app */
+.hint-bar {
+  border-top: 1px solid var(--line);
+  background: var(--bg-2);
+  padding: 6px var(--s-5);
+  font-size: 11px;
+  color: var(--ink-3);
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.hint-bar kbd { font-size: 10px; }
+
+</style>
+</head>
+<body data-theme="light">
+  <div id="app">
+    <!-- Barre latérale gauche : liste des applications -->
+    <aside id="sidebar" aria-label="Applications">
+      <div class="brand">
+        <span class="brand-mark">∑</span>
+        <span class="brand-name">Grace</span>
+        <span class="brand-tag">v0.2</span>
+      </div>
+      <nav id="app-list" role="navigation"></nav>
+      <div class="sidebar-footer">
+        <button id="theme-toggle" class="icon-btn" title="Basculer thème (Ctrl+T)">◐</button>
+        <button id="vkb-toggle" class="icon-btn" title="Clavier virtuel (Ctrl+K)">⌨</button>
+      </div>
+    </aside>
+
+    <!-- Zone principale : l'app courante s'y monte -->
+    <main id="main" role="main"></main>
+
+    <!-- Clavier virtuel repliable, à droite -->
+    <aside id="vkb" aria-label="Clavier virtuel" hidden></aside>
+  </div>
+
+  <!-- Scripts internes : ordre = ordre de dépendance -->
+  <!-- IIFE qui attachent au namespace global window.GR -->
+  <script>
+/**
+ * state.js — Store global + persistance localStorage.
+ *
+ * Pattern : "store" minimaliste. On garde un objet d'état mutable, on déclenche
+ * save() après chaque changement, et les composants peuvent s'abonner via
+ * subscribe() pour réagir aux changements.
+ *
+ * Pourquoi pas Redux/etc. : surdimensionné pour un projet single-file. Cette
+ * approche tient en 60 lignes et fait le travail.
+ */
+(function (GR) {
+  'use strict';
+
+  const STORAGE_KEY = 'grace.state.v1';
+
+  // État par défaut. Toute nouvelle clé doit être ajoutée ici.
+  const DEFAULT = {
+    theme: 'light',          // 'light' | 'dark'
+    currentApp: 'calculs',   // id de l'app affichée
+    angleMode: 'rad',        // 'rad' | 'deg' (mode trigonométrique)
+    history: [],             // [{ expr, latex, result, resultLatex, isError, ts }]
+    vars: {},                // variables utilisateur sérialisées { A: 5, B: ... }
+    vkbOpen: false,          // clavier virtuel visible ?
+  };
+
+  // Charge le state depuis localStorage, fusionne avec DEFAULT (au cas où on
+  // ajoute des clés dans une future version sans casser les sauvegardes).
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { ...DEFAULT };
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT, ...parsed };
+    } catch (e) {
+      console.warn('Impossible de charger le state, reset.', e);
+      return { ...DEFAULT };
+    }
+  }
+
+  const state = load();
+  const subscribers = new Set();
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // Quota dépassé : on tronque l'historique au pire des cas.
+      console.warn('Sauvegarde échouée, tentative de nettoyage.', e);
+      state.history = state.history.slice(-50);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+  }
+
+  // Met à jour l'état (patch superficiel) et notifie les abonnés.
+  function set(patch) {
+    Object.assign(state, patch);
+    save();
+    subscribers.forEach(fn => fn(state));
+  }
+
+  function subscribe(fn) {
+    subscribers.add(fn);
+    return () => subscribers.delete(fn);
+  }
+
+  // Helpers ciblés pour l'historique (évite de dupliquer Array.prototype.push partout).
+  function pushHistory(entry) {
+    state.history.push({ ts: Date.now(), ...entry });
+    // Garde-fou : limiter à 500 entrées max pour éviter ballonnement localStorage.
+    if (state.history.length > 500) state.history.shift();
+    save();
+    subscribers.forEach(fn => fn(state));
+  }
+
+  function clearHistory() {
+    state.history = [];
+    save();
+    subscribers.forEach(fn => fn(state));
+  }
+
+  GR.state = {
+    get: () => state,
+    set,
+    subscribe,
+    pushHistory,
+    clearHistory,
+    save,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * latex.js — Petit wrapper autour de KaTeX.
+ *
+ * Deux usages :
+ *   - render(target, tex)           → rend le LaTeX final dans un élément.
+ *   - exprToLatex(expr) → string|null → essaie de convertir une expression
+ *     math.js en LaTeX (sert à l'aperçu live au-dessus de la zone de saisie).
+ */
+(function (GR) {
+  'use strict';
+
+  function render(target, tex, opts) {
+    if (!window.katex) {
+      target.textContent = tex;
+      return;
+    }
+    try {
+      window.katex.render(tex, target, {
+        throwOnError: false,
+        displayMode: false,
+        output: 'html',
+        ...opts,
+      });
+    } catch (e) {
+      // Filet de sécurité : on n'a pas envie qu'une erreur LaTeX casse la page.
+      target.textContent = tex;
+    }
+  }
+
+  // Convertit une expression utilisateur en LaTeX via math.js.
+  // Retourne null si la saisie n'est pas (encore) parsable — l'UI affichera
+  // alors la chaîne brute en mode "code".
+  function exprToLatex(expr) {
+    if (!window.math) return null;
+    if (!expr || !expr.trim()) return null;
+    try {
+      const node = window.math.parse(expr);
+      // toTex({ parenthesis: 'keep' }) garde les parenthèses telles qu'écrites.
+      return node.toTex({ parenthesis: 'keep', implicit: 'show' });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Convertit un résultat (number, Complex, BigNumber, Unit…) en LaTeX.
+  function valueToLatex(value) {
+    if (!window.math) return String(value);
+    try {
+      // math.format gère proprement la précision et les types spéciaux.
+      const formatted = window.math.format(value, { precision: 12 });
+      // On reparse le résultat formaté pour obtenir un LaTeX propre.
+      return window.math.parse(formatted).toTex({ parenthesis: 'keep' });
+    } catch {
+      return String(value);
+    }
+  }
+
+  GR.latex = { render, exprToLatex, valueToLatex };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <!-- Données : doivent être disponibles avant l'engine (qui injecte les constantes). -->
+  <script>
+/**
+ * data/periodic.js — Données du tableau périodique.
+ *
+ * Pour chaque élément :
+ *   z       : numéro atomique
+ *   sym     : symbole
+ *   nm      : nom français
+ *   nmEn    : nom anglais
+ *   mass    : masse atomique standard (u). Crochets = nombre de masse de
+ *             l'isotope le plus stable si pas d'atomes standards.
+ *   cfg     : configuration électronique (notation condensée)
+ *   en      : électronégativité Pauling (null si indéfinie)
+ *   period  : période (1–7)
+ *   group   : groupe IUPAC (1–18) ; null pour lanthanides/actinides
+ *   block   : 's' | 'p' | 'd' | 'f'
+ *   cat     : catégorie pour la couleur (voir base.css)
+ *   ar, cr, vdwr : rayon atomique / covalent / Van der Waals (pm)
+ *   mp, bp  : points de fusion / d'ébullition (K) — null si inconnu/sublime
+ *   dens    : densité (g/cm³ à STP)
+ *   ox      : états d'oxydation usuels (du plus négatif au plus positif)
+ *   xtal    : structure cristalline standard
+ *   discYr  : année de découverte
+ *   iso     : isotopes principaux [{a: nombre de masse, ab: abondance %}]
+ *   notes   : remarque courte (optionnelle)
+ *
+ * Sources principales : CIAAW 2021, CRC Handbook, NIST. Les valeurs sont
+ * arrondies à un nombre raisonnable de chiffres significatifs pour la
+ * lecture. Pour les éléments transuraniens lourds, certaines valeurs
+ * sont prédites ou estimées.
+ */
+(function (GR) {
+  'use strict';
+
+  // Format ultra-compact : on stocke un tableau de tableaux, puis on
+  // remappe en objets nommés. Cela réduit la taille du fichier et garde
+  // la définition lisible (chaque ligne = un élément).
+  const KEYS = ['z','sym','nm','nmEn','mass','cfg','en','period','group','block','cat',
+                'ar','cr','vdwr','mp','bp','dens','ox','xtal','discYr','iso','notes'];
+
+  // Quelques abréviations pour les structures cristallines.
+  const FCC='cubique à faces centrées', BCC='cubique centrée', HCP='hexagonale compacte',
+        DC='cubique diamant', RH='rhomboédrique', OR='orthorhombique', TG='tétragonale',
+        SC='cubique simple', MO='monoclinique', HX='hexagonale', TR='triclinique';
+
+  const D = [
+    // z, sym, nm, nmEn, mass, cfg, en, p, g, blk, cat, ar, cr, vdwr, mp, bp, dens, ox, xtal, year, iso, notes
+    [1,'H','Hydrogène','Hydrogen',1.008,'1s¹',2.20,1,1,'s','non-metal',53,31,120,13.99,20.27,0.0000899,[-1,1],HX,1766,[{a:1,ab:99.985},{a:2,ab:0.015}],'L\'élément le plus abondant de l\'univers.'],
+    [2,'He','Hélium','Helium',4.0026,'1s²',null,1,18,'s','gaz-noble',31,28,140,0.95,4.22,0.0001785,[0],HCP,1868,[{a:4,ab:99.99986},{a:3,ab:0.00014}],null],
+    [3,'Li','Lithium','Lithium',6.94,'[He] 2s¹',0.98,2,1,'s','alcalin',167,128,182,453.65,1603,0.534,[1],BCC,1817,[{a:7,ab:92.4},{a:6,ab:7.6}],null],
+    [4,'Be','Béryllium','Beryllium',9.0122,'[He] 2s²',1.57,2,2,'s','alcalino-terreux',112,96,153,1560,2742,1.85,[2],HCP,1798,[{a:9,ab:100}],'Toxique.'],
+    [5,'B','Bore','Boron',10.81,'[He] 2s² 2p¹',2.04,2,13,'p','metalloide',87,84,192,2349,4200,2.34,[3],RH,1808,[{a:11,ab:80.1},{a:10,ab:19.9}],null],
+    [6,'C','Carbone','Carbon',12.011,'[He] 2s² 2p²',2.55,2,14,'p','non-metal',67,76,170,3823,4098,2.267,[-4,-3,-2,-1,1,2,3,4],HX,null,[{a:12,ab:98.9},{a:13,ab:1.1}],'Sublime ; mp/bp = graphite.'],
+    [7,'N','Azote','Nitrogen',14.007,'[He] 2s² 2p³',3.04,2,15,'p','non-metal',56,71,155,63.15,77.36,0.001251,[-3,-2,-1,1,2,3,4,5],HX,1772,[{a:14,ab:99.6},{a:15,ab:0.4}],null],
+    [8,'O','Oxygène','Oxygen',15.999,'[He] 2s² 2p⁴',3.44,2,16,'p','non-metal',48,66,152,54.36,90.20,0.001429,[-2,-1,1,2],SC,1774,[{a:16,ab:99.76},{a:18,ab:0.20},{a:17,ab:0.04}],null],
+    [9,'F','Fluor','Fluorine',18.998,'[He] 2s² 2p⁵',3.98,2,17,'p','halogene',42,57,147,53.53,85.03,0.001696,[-1],SC,1886,[{a:19,ab:100}],'Le plus électronégatif.'],
+    [10,'Ne','Néon','Neon',20.180,'[He] 2s² 2p⁶',null,2,18,'p','gaz-noble',38,58,154,24.56,27.07,0.0008999,[0],FCC,1898,[{a:20,ab:90.5},{a:22,ab:9.3},{a:21,ab:0.27}],null],
+    [11,'Na','Sodium','Sodium',22.990,'[Ne] 3s¹',0.93,3,1,'s','alcalin',190,166,227,370.95,1156,0.971,[1],BCC,1807,[{a:23,ab:100}],null],
+    [12,'Mg','Magnésium','Magnesium',24.305,'[Ne] 3s²',1.31,3,2,'s','alcalino-terreux',145,141,173,923,1363,1.738,[2],HCP,1755,[{a:24,ab:79.0},{a:26,ab:11.0},{a:25,ab:10.0}],null],
+    [13,'Al','Aluminium','Aluminium',26.982,'[Ne] 3s² 3p¹',1.61,3,13,'p','post-transition',118,121,184,933.47,2792,2.70,[3],FCC,1825,[{a:27,ab:100}],null],
+    [14,'Si','Silicium','Silicon',28.085,'[Ne] 3s² 3p²',1.90,3,14,'p','metalloide',111,111,210,1687,3538,2.3296,[-4,4],DC,1824,[{a:28,ab:92.2},{a:29,ab:4.7},{a:30,ab:3.1}],'Base de l\'électronique.'],
+    [15,'P','Phosphore','Phosphorus',30.974,'[Ne] 3s² 3p³',2.19,3,15,'p','non-metal',98,107,180,317.30,553.65,1.82,[-3,3,5],TR,1669,[{a:31,ab:100}],null],
+    [16,'S','Soufre','Sulfur',32.06,'[Ne] 3s² 3p⁴',2.58,3,16,'p','non-metal',88,105,180,388.36,717.87,2.067,[-2,2,4,6],OR,null,[{a:32,ab:95.0},{a:34,ab:4.3},{a:33,ab:0.75}],null],
+    [17,'Cl','Chlore','Chlorine',35.45,'[Ne] 3s² 3p⁵',3.16,3,17,'p','halogene',79,102,175,171.65,239.11,0.003214,[-1,1,3,5,7],OR,1774,[{a:35,ab:75.78},{a:37,ab:24.22}],null],
+    [18,'Ar','Argon','Argon',39.948,'[Ne] 3s² 3p⁶',null,3,18,'p','gaz-noble',71,106,188,83.81,87.30,0.001784,[0],FCC,1894,[{a:40,ab:99.6},{a:36,ab:0.34},{a:38,ab:0.063}],null],
+    [19,'K','Potassium','Potassium',39.098,'[Ar] 4s¹',0.82,4,1,'s','alcalin',243,203,275,336.53,1032,0.862,[1],BCC,1807,[{a:39,ab:93.3},{a:41,ab:6.7}],null],
+    [20,'Ca','Calcium','Calcium',40.078,'[Ar] 4s²',1.00,4,2,'s','alcalino-terreux',194,176,231,1115,1757,1.54,[2],FCC,1808,[{a:40,ab:96.94},{a:44,ab:2.09}],null],
+    [21,'Sc','Scandium','Scandium',44.956,'[Ar] 3d¹ 4s²',1.36,4,3,'d','transition',184,170,211,1814,3109,2.989,[3],HCP,1879,[{a:45,ab:100}],null],
+    [22,'Ti','Titane','Titanium',47.867,'[Ar] 3d² 4s²',1.54,4,4,'d','transition',176,160,null,1941,3560,4.54,[2,3,4],HCP,1791,[{a:48,ab:73.7}],null],
+    [23,'V','Vanadium','Vanadium',50.942,'[Ar] 3d³ 4s²',1.63,4,5,'d','transition',171,153,null,2183,3680,6.11,[2,3,4,5],BCC,1801,[{a:51,ab:99.75}],null],
+    [24,'Cr','Chrome','Chromium',51.996,'[Ar] 3d⁵ 4s¹',1.66,4,6,'d','transition',166,139,null,2180,2944,7.15,[2,3,6],BCC,1797,[{a:52,ab:83.79}],'Exception : configuration 3d⁵ 4s¹.'],
+    [25,'Mn','Manganèse','Manganese',54.938,'[Ar] 3d⁵ 4s²',1.55,4,7,'d','transition',161,139,null,1519,2334,7.44,[2,3,4,6,7],BCC,1774,[{a:55,ab:100}],null],
+    [26,'Fe','Fer','Iron',55.845,'[Ar] 3d⁶ 4s²',1.83,4,8,'d','transition',156,132,null,1811,3134,7.874,[2,3,6],BCC,null,[{a:56,ab:91.75}],null],
+    [27,'Co','Cobalt','Cobalt',58.933,'[Ar] 3d⁷ 4s²',1.88,4,9,'d','transition',152,126,null,1768,3200,8.86,[2,3],HCP,1735,[{a:59,ab:100}],null],
+    [28,'Ni','Nickel','Nickel',58.693,'[Ar] 3d⁸ 4s²',1.91,4,10,'d','transition',149,124,163,1728,3186,8.912,[2,3],FCC,1751,[{a:58,ab:68.08}],null],
+    [29,'Cu','Cuivre','Copper',63.546,'[Ar] 3d¹⁰ 4s¹',1.90,4,11,'d','transition',145,132,140,1357.77,2835,8.96,[1,2],FCC,null,[{a:63,ab:69.15}],'Exception : 3d¹⁰ 4s¹.'],
+    [30,'Zn','Zinc','Zinc',65.38,'[Ar] 3d¹⁰ 4s²',1.65,4,12,'d','transition',142,122,139,692.68,1180,7.134,[2],HCP,null,[{a:64,ab:48.27}],null],
+    [31,'Ga','Gallium','Gallium',69.723,'[Ar] 3d¹⁰ 4s² 4p¹',1.81,4,13,'p','post-transition',136,122,187,302.91,2477,5.907,[3],OR,1875,[{a:69,ab:60.1}],null],
+    [32,'Ge','Germanium','Germanium',72.630,'[Ar] 3d¹⁰ 4s² 4p²',2.01,4,14,'p','metalloide',125,120,211,1211.40,3106,5.323,[2,4],DC,1886,[{a:74,ab:36.7}],null],
+    [33,'As','Arsenic','Arsenic',74.922,'[Ar] 3d¹⁰ 4s² 4p³',2.18,4,15,'p','metalloide',114,119,185,887,887,5.776,[-3,3,5],RH,null,[{a:75,ab:100}],'Sublime à pression normale.'],
+    [34,'Se','Sélénium','Selenium',78.971,'[Ar] 3d¹⁰ 4s² 4p⁴',2.55,4,16,'p','non-metal',103,120,190,494,958,4.809,[-2,2,4,6],MO,1817,[{a:80,ab:49.6}],null],
+    [35,'Br','Brome','Bromine',79.904,'[Ar] 3d¹⁰ 4s² 4p⁵',2.96,4,17,'p','halogene',94,120,185,265.8,332.0,3.122,[-1,1,3,5,7],OR,1826,[{a:79,ab:50.69}],null],
+    [36,'Kr','Krypton','Krypton',83.798,'[Ar] 3d¹⁰ 4s² 4p⁶',3.00,4,18,'p','gaz-noble',88,116,202,115.79,119.93,0.003733,[0,2],FCC,1898,[{a:84,ab:57.0}],null],
+    [37,'Rb','Rubidium','Rubidium',85.468,'[Kr] 5s¹',0.82,5,1,'s','alcalin',265,220,303,312.46,961,1.532,[1],BCC,1861,[{a:85,ab:72.17}],null],
+    [38,'Sr','Strontium','Strontium',87.62,'[Kr] 5s²',0.95,5,2,'s','alcalino-terreux',219,195,249,1050,1655,2.64,[2],FCC,1790,[{a:88,ab:82.58}],null],
+    [39,'Y','Yttrium','Yttrium',88.906,'[Kr] 4d¹ 5s²',1.22,5,3,'d','transition',212,190,null,1799,3609,4.469,[3],HCP,1794,[{a:89,ab:100}],null],
+    [40,'Zr','Zirconium','Zirconium',91.224,'[Kr] 4d² 5s²',1.33,5,4,'d','transition',206,175,null,2128,4682,6.506,[4],HCP,1789,[{a:90,ab:51.45}],null],
+    [41,'Nb','Niobium','Niobium',92.906,'[Kr] 4d⁴ 5s¹',1.6,5,5,'d','transition',198,164,null,2750,5017,8.57,[3,5],BCC,1801,[{a:93,ab:100}],null],
+    [42,'Mo','Molybdène','Molybdenum',95.95,'[Kr] 4d⁵ 5s¹',2.16,5,6,'d','transition',190,154,null,2896,4912,10.22,[2,3,4,5,6],BCC,1781,[{a:98,ab:24.39}],null],
+    [43,'Tc','Technétium','Technetium',[98],'[Kr] 4d⁵ 5s²',1.9,5,7,'d','transition',183,147,null,2430,4538,11.5,[4,5,6,7],HCP,1937,[{a:98,ab:null}],'Tous isotopes radioactifs.'],
+    [44,'Ru','Ruthénium','Ruthenium',101.07,'[Kr] 4d⁷ 5s¹',2.2,5,8,'d','transition',178,146,null,2607,4423,12.37,[2,3,4,6,8],HCP,1844,[{a:102,ab:31.6}],null],
+    [45,'Rh','Rhodium','Rhodium',102.91,'[Kr] 4d⁸ 5s¹',2.28,5,9,'d','transition',173,142,null,2237,3968,12.41,[3],FCC,1803,[{a:103,ab:100}],null],
+    [46,'Pd','Palladium','Palladium',106.42,'[Kr] 4d¹⁰',2.20,5,10,'d','transition',169,139,163,1828.05,3236,12.02,[2,4],FCC,1803,[{a:106,ab:27.33}],null],
+    [47,'Ag','Argent','Silver',107.87,'[Kr] 4d¹⁰ 5s¹',1.93,5,11,'d','transition',165,145,172,1234.93,2435,10.501,[1],FCC,null,[{a:107,ab:51.84}],null],
+    [48,'Cd','Cadmium','Cadmium',112.41,'[Kr] 4d¹⁰ 5s²',1.69,5,12,'d','transition',161,144,158,594.22,1040,8.69,[2],HCP,1817,[{a:114,ab:28.73}],null],
+    [49,'In','Indium','Indium',114.82,'[Kr] 4d¹⁰ 5s² 5p¹',1.78,5,13,'p','post-transition',156,142,193,429.75,2345,7.31,[3],TG,1863,[{a:115,ab:95.7}],null],
+    [50,'Sn','Étain','Tin',118.71,'[Kr] 4d¹⁰ 5s² 5p²',1.96,5,14,'p','post-transition',145,139,217,505.08,2875,7.287,[2,4],TG,null,[{a:120,ab:32.58}],null],
+    [51,'Sb','Antimoine','Antimony',121.76,'[Kr] 4d¹⁰ 5s² 5p³',2.05,5,15,'p','metalloide',133,139,206,903.78,1860,6.685,[-3,3,5],RH,null,[{a:121,ab:57.21}],null],
+    [52,'Te','Tellure','Tellurium',127.60,'[Kr] 4d¹⁰ 5s² 5p⁴',2.1,5,16,'p','metalloide',123,138,206,722.66,1261,6.232,[-2,2,4,6],HX,1782,[{a:130,ab:34.08}],null],
+    [53,'I','Iode','Iodine',126.90,'[Kr] 4d¹⁰ 5s² 5p⁵',2.66,5,17,'p','halogene',115,139,198,386.85,457.4,4.93,[-1,1,3,5,7],OR,1811,[{a:127,ab:100}],null],
+    [54,'Xe','Xénon','Xenon',131.29,'[Kr] 4d¹⁰ 5s² 5p⁶',2.6,5,18,'p','gaz-noble',108,140,216,161.36,165.03,0.005887,[0,2,4,6,8],FCC,1898,[{a:132,ab:26.9}],null],
+    [55,'Cs','Césium','Caesium',132.91,'[Xe] 6s¹',0.79,6,1,'s','alcalin',298,244,343,301.59,944,1.873,[1],BCC,1860,[{a:133,ab:100}],null],
+    [56,'Ba','Baryum','Barium',137.33,'[Xe] 6s²',0.89,6,2,'s','alcalino-terreux',253,215,268,1000,2170,3.62,[2],BCC,1808,[{a:138,ab:71.7}],null],
+    [57,'La','Lanthane','Lanthanum',138.91,'[Xe] 5d¹ 6s²',1.10,6,null,'d','lanthanide',null,207,null,1193,3737,6.146,[3],HX,1839,[{a:139,ab:99.91}],null],
+    [58,'Ce','Cérium','Cerium',140.12,'[Xe] 4f¹ 5d¹ 6s²',1.12,6,null,'f','lanthanide',null,204,null,1071,3633,6.770,[3,4],FCC,1803,[{a:140,ab:88.45}],null],
+    [59,'Pr','Praséodyme','Praseodymium',140.91,'[Xe] 4f³ 6s²',1.13,6,null,'f','lanthanide',null,203,null,1204,3563,6.773,[3,4],HX,1885,[{a:141,ab:100}],null],
+    [60,'Nd','Néodyme','Neodymium',144.24,'[Xe] 4f⁴ 6s²',1.14,6,null,'f','lanthanide',null,201,null,1294,3373,7.007,[2,3],HX,1885,[{a:142,ab:27.2}],null],
+    [61,'Pm','Prométhium','Promethium',[145],'[Xe] 4f⁵ 6s²',1.13,6,null,'f','lanthanide',null,199,null,1315,3273,7.26,[3],HX,1945,[{a:145,ab:null}],'Radioactif.'],
+    [62,'Sm','Samarium','Samarium',150.36,'[Xe] 4f⁶ 6s²',1.17,6,null,'f','lanthanide',null,198,null,1347,2076,7.52,[2,3],RH,1879,[{a:152,ab:26.75}],null],
+    [63,'Eu','Europium','Europium',151.96,'[Xe] 4f⁷ 6s²',1.2,6,null,'f','lanthanide',null,198,null,1095,1800,5.243,[2,3],BCC,1901,[{a:153,ab:52.19}],null],
+    [64,'Gd','Gadolinium','Gadolinium',157.25,'[Xe] 4f⁷ 5d¹ 6s²',1.20,6,null,'f','lanthanide',null,196,null,1586,3523,7.895,[3],HCP,1880,[{a:158,ab:24.84}],null],
+    [65,'Tb','Terbium','Terbium',158.93,'[Xe] 4f⁹ 6s²',1.2,6,null,'f','lanthanide',null,194,null,1629,3503,8.229,[3,4],HCP,1843,[{a:159,ab:100}],null],
+    [66,'Dy','Dysprosium','Dysprosium',162.50,'[Xe] 4f¹⁰ 6s²',1.22,6,null,'f','lanthanide',null,192,null,1685,2840,8.55,[3],HCP,1886,[{a:164,ab:28.26}],null],
+    [67,'Ho','Holmium','Holmium',164.93,'[Xe] 4f¹¹ 6s²',1.23,6,null,'f','lanthanide',null,192,null,1747,2973,8.795,[3],HCP,1878,[{a:165,ab:100}],null],
+    [68,'Er','Erbium','Erbium',167.26,'[Xe] 4f¹² 6s²',1.24,6,null,'f','lanthanide',null,189,null,1802,3141,9.066,[3],HCP,1842,[{a:166,ab:33.50}],null],
+    [69,'Tm','Thulium','Thulium',168.93,'[Xe] 4f¹³ 6s²',1.25,6,null,'f','lanthanide',null,190,null,1818,2223,9.321,[3],HCP,1879,[{a:169,ab:100}],null],
+    [70,'Yb','Ytterbium','Ytterbium',173.05,'[Xe] 4f¹⁴ 6s²',1.1,6,null,'f','lanthanide',null,187,null,1097,1469,6.965,[2,3],FCC,1878,[{a:174,ab:31.83}],null],
+    [71,'Lu','Lutécium','Lutetium',174.97,'[Xe] 4f¹⁴ 5d¹ 6s²',1.27,6,null,'d','lanthanide',null,187,null,1925,3675,9.84,[3],HCP,1907,[{a:175,ab:97.41}],null],
+    [72,'Hf','Hafnium','Hafnium',178.49,'[Xe] 4f¹⁴ 5d² 6s²',1.3,6,4,'d','transition',208,175,null,2506,4876,13.31,[4],HCP,1923,[{a:180,ab:35.08}],null],
+    [73,'Ta','Tantale','Tantalum',180.95,'[Xe] 4f¹⁴ 5d³ 6s²',1.5,6,5,'d','transition',200,170,null,3290,5731,16.654,[5],BCC,1802,[{a:181,ab:99.99}],null],
+    [74,'W','Tungstène','Tungsten',183.84,'[Xe] 4f¹⁴ 5d⁴ 6s²',2.36,6,6,'d','transition',193,162,null,3695,5828,19.25,[2,3,4,5,6],BCC,1783,[{a:184,ab:30.64}],null],
+    [75,'Re','Rhénium','Rhenium',186.21,'[Xe] 4f¹⁴ 5d⁵ 6s²',1.9,6,7,'d','transition',188,151,null,3459,5869,21.02,[-1,2,4,6,7],HCP,1925,[{a:187,ab:62.6}],null],
+    [76,'Os','Osmium','Osmium',190.23,'[Xe] 4f¹⁴ 5d⁶ 6s²',2.2,6,8,'d','transition',185,144,null,3306,5285,22.61,[2,3,4,6,8],HCP,1803,[{a:192,ab:40.78}],'Métal le plus dense.'],
+    [77,'Ir','Iridium','Iridium',192.22,'[Xe] 4f¹⁴ 5d⁷ 6s²',2.20,6,9,'d','transition',180,141,null,2719,4701,22.56,[1,2,3,4,6],FCC,1803,[{a:193,ab:62.7}],null],
+    [78,'Pt','Platine','Platinum',195.08,'[Xe] 4f¹⁴ 5d⁹ 6s¹',2.28,6,10,'d','transition',177,136,175,2041.4,4098,21.46,[2,4],FCC,1735,[{a:195,ab:33.83}],null],
+    [79,'Au','Or','Gold',196.97,'[Xe] 4f¹⁴ 5d¹⁰ 6s¹',2.54,6,11,'d','transition',174,136,166,1337.33,3129,19.282,[1,3],FCC,null,[{a:197,ab:100}],null],
+    [80,'Hg','Mercure','Mercury',200.59,'[Xe] 4f¹⁴ 5d¹⁰ 6s²',2.00,6,12,'d','transition',171,132,155,234.32,629.88,13.5336,[1,2],RH,null,[{a:202,ab:29.86}],'Liquide à T ambiante.'],
+    [81,'Tl','Thallium','Thallium',204.38,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹',1.62,6,13,'p','post-transition',156,145,196,577,1746,11.85,[1,3],HCP,1861,[{a:205,ab:70.48}],null],
+    [82,'Pb','Plomb','Lead',207.2,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²',2.33,6,14,'p','post-transition',154,146,202,600.61,2022,11.342,[2,4],FCC,null,[{a:208,ab:52.4}],null],
+    [83,'Bi','Bismuth','Bismuth',208.98,'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³',2.02,6,15,'p','post-transition',143,148,207,544.7,1837,9.807,[3,5],RH,null,[{a:209,ab:100}],null],
+    [84,'Po','Polonium','Polonium',[209],'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴',2.0,6,16,'p','metalloide',135,140,197,527,1235,9.32,[-2,2,4,6],SC,1898,[{a:209,ab:null}],null],
+    [85,'At','Astate','Astatine',[210],'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵',2.2,6,17,'p','halogene',null,150,202,575,610,null,[-1,1,3,5,7],null,1940,[{a:210,ab:null}],null],
+    [86,'Rn','Radon','Radon',[222],'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶',null,6,18,'p','gaz-noble',120,150,220,202,211.45,0.00973,[0,2],FCC,1900,[{a:222,ab:null}],null],
+    [87,'Fr','Francium','Francium',[223],'[Rn] 7s¹',0.7,7,1,'s','alcalin',null,260,348,300,950,1.87,[1],BCC,1939,[{a:223,ab:null}],null],
+    [88,'Ra','Radium','Radium',[226],'[Rn] 7s²',0.9,7,2,'s','alcalino-terreux',null,221,283,973,2010,5.5,[2],BCC,1898,[{a:226,ab:null}],null],
+    [89,'Ac','Actinium','Actinium',[227],'[Rn] 6d¹ 7s²',1.1,7,null,'d','actinide',null,215,null,1323,3471,10.07,[3],FCC,1899,[{a:227,ab:null}],null],
+    [90,'Th','Thorium','Thorium',232.04,'[Rn] 6d² 7s²',1.3,7,null,'f','actinide',null,206,null,2115,5061,11.72,[4],FCC,1829,[{a:232,ab:100}],null],
+    [91,'Pa','Protactinium','Protactinium',231.04,'[Rn] 5f² 6d¹ 7s²',1.5,7,null,'f','actinide',null,200,null,1841,4300,15.37,[3,4,5],TG,1913,[{a:231,ab:100}],null],
+    [92,'U','Uranium','Uranium',238.03,'[Rn] 5f³ 6d¹ 7s²',1.38,7,null,'f','actinide',null,196,186,1405.3,4404,19.1,[3,4,5,6],OR,1789,[{a:238,ab:99.27},{a:235,ab:0.72}],null],
+    [93,'Np','Neptunium','Neptunium',[237],'[Rn] 5f⁴ 6d¹ 7s²',1.36,7,null,'f','actinide',null,190,null,917,4273,20.45,[3,4,5,6,7],OR,1940,[{a:237,ab:null}],null],
+    [94,'Pu','Plutonium','Plutonium',[244],'[Rn] 5f⁶ 7s²',1.28,7,null,'f','actinide',null,187,null,912.5,3501,19.816,[3,4,5,6],MO,1940,[{a:244,ab:null}],null],
+    [95,'Am','Américium','Americium',[243],'[Rn] 5f⁷ 7s²',1.3,7,null,'f','actinide',null,180,null,1449,2880,12,[3,4,5,6],HX,1944,[{a:243,ab:null}],null],
+    [96,'Cm','Curium','Curium',[247],'[Rn] 5f⁷ 6d¹ 7s²',1.3,7,null,'f','actinide',null,169,null,1613,3383,13.51,[3,4],HX,1944,[{a:247,ab:null}],null],
+    [97,'Bk','Berkélium','Berkelium',[247],'[Rn] 5f⁹ 7s²',1.3,7,null,'f','actinide',null,null,null,1259,2900,14.78,[3,4],HX,1949,[{a:247,ab:null}],null],
+    [98,'Cf','Californium','Californium',[251],'[Rn] 5f¹⁰ 7s²',1.3,7,null,'f','actinide',null,null,null,1173,1743,15.1,[2,3,4],HX,1950,[{a:251,ab:null}],null],
+    [99,'Es','Einsteinium','Einsteinium',[252],'[Rn] 5f¹¹ 7s²',1.3,7,null,'f','actinide',null,null,null,1133,1269,8.84,[2,3],FCC,1952,[{a:252,ab:null}],null],
+    [100,'Fm','Fermium','Fermium',[257],'[Rn] 5f¹² 7s²',1.3,7,null,'f','actinide',null,null,null,1800,null,null,[2,3],null,1952,[{a:257,ab:null}],null],
+    [101,'Md','Mendélévium','Mendelevium',[258],'[Rn] 5f¹³ 7s²',1.3,7,null,'f','actinide',null,null,null,1100,null,null,[2,3],null,1955,[{a:258,ab:null}],null],
+    [102,'No','Nobélium','Nobelium',[259],'[Rn] 5f¹⁴ 7s²',1.3,7,null,'f','actinide',null,null,null,1100,null,null,[2,3],null,1958,[{a:259,ab:null}],null],
+    [103,'Lr','Lawrencium','Lawrencium',[266],'[Rn] 5f¹⁴ 7s² 7p¹',1.3,7,null,'p','actinide',null,null,null,1900,null,null,[3],null,1961,[{a:266,ab:null}],null],
+    [104,'Rf','Rutherfordium','Rutherfordium',[267],'[Rn] 5f¹⁴ 6d² 7s²',null,7,4,'d','transition',null,null,null,null,null,null,[4],null,1964,[{a:267,ab:null}],null],
+    [105,'Db','Dubnium','Dubnium',[268],'[Rn] 5f¹⁴ 6d³ 7s²',null,7,5,'d','transition',null,null,null,null,null,null,[5],null,1967,[{a:268,ab:null}],null],
+    [106,'Sg','Seaborgium','Seaborgium',[269],'[Rn] 5f¹⁴ 6d⁴ 7s²',null,7,6,'d','transition',null,null,null,null,null,null,[6],null,1974,[{a:269,ab:null}],null],
+    [107,'Bh','Bohrium','Bohrium',[270],'[Rn] 5f¹⁴ 6d⁵ 7s²',null,7,7,'d','transition',null,null,null,null,null,null,[7],null,1981,[{a:270,ab:null}],null],
+    [108,'Hs','Hassium','Hassium',[277],'[Rn] 5f¹⁴ 6d⁶ 7s²',null,7,8,'d','transition',null,null,null,null,null,null,[8],null,1984,[{a:277,ab:null}],null],
+    [109,'Mt','Meitnérium','Meitnerium',[278],'[Rn] 5f¹⁴ 6d⁷ 7s²',null,7,9,'d','inconnu',null,null,null,null,null,null,[],null,1982,[{a:278,ab:null}],null],
+    [110,'Ds','Darmstadtium','Darmstadtium',[281],'[Rn] 5f¹⁴ 6d⁸ 7s²',null,7,10,'d','inconnu',null,null,null,null,null,null,[],null,1994,[{a:281,ab:null}],null],
+    [111,'Rg','Roentgenium','Roentgenium',[282],'[Rn] 5f¹⁴ 6d⁹ 7s²',null,7,11,'d','inconnu',null,null,null,null,null,null,[],null,1994,[{a:282,ab:null}],null],
+    [112,'Cn','Copernicium','Copernicium',[285],'[Rn] 5f¹⁴ 6d¹⁰ 7s²',null,7,12,'d','transition',null,null,null,null,null,null,[2],null,1996,[{a:285,ab:null}],null],
+    [113,'Nh','Nihonium','Nihonium',[286],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹',null,7,13,'p','post-transition',null,null,null,null,null,null,[1,3,5],null,2003,[{a:286,ab:null}],null],
+    [114,'Fl','Flérovium','Flerovium',[289],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²',null,7,14,'p','post-transition',null,null,null,null,null,null,[2,4],null,1998,[{a:289,ab:null}],null],
+    [115,'Mc','Moscovium','Moscovium',[290],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³',null,7,15,'p','post-transition',null,null,null,null,null,null,[1,3],null,2003,[{a:290,ab:null}],null],
+    [116,'Lv','Livermorium','Livermorium',[293],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴',null,7,16,'p','post-transition',null,null,null,null,null,null,[2,4],null,2000,[{a:293,ab:null}],null],
+    [117,'Ts','Tennesse','Tennessine',[294],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵',null,7,17,'p','halogene',null,null,null,null,null,null,[-1,1,3,5],null,2010,[{a:294,ab:null}],null],
+    [118,'Og','Oganesson','Oganesson',[294],'[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶',null,7,18,'p','gaz-noble',null,null,null,null,null,null,[0,2,4],null,2002,[{a:294,ab:null}],null],
+  ];
+
+  // Décompacte le tableau de tableaux en tableau d'objets.
+  const ELEMENTS = D.map(row => {
+    const obj = {};
+    KEYS.forEach((k, i) => { obj[k] = row[i]; });
+    return obj;
+  });
+
+  // Pour positionner les lanthanides/actinides, NumWorks affiche La/Ac
+  // à leur "vraie" case (groupe 3, période 6/7) et la série en dessous.
+  // On retourne une grille avec coordonnées (row, col) déjà calculées.
+  function gridPosition(el) {
+    if (el.cat === 'lanthanide' && el.z !== 71) return { row: 9, col: el.z - 57 + 3 };
+    if (el.cat === 'actinide' && el.z !== 103) return { row: 10, col: el.z - 89 + 3 };
+    // Cas particuliers : on affiche La (57) et Ac (89) en groupe 3.
+    if (el.z === 57) return { row: 6, col: 3 };
+    if (el.z === 89) return { row: 7, col: 3 };
+    if (el.z === 71) return { row: 9, col: 17 };
+    if (el.z === 103) return { row: 10, col: 17 };
+    // Cas général.
+    return { row: el.period, col: el.group };
+  }
+
+  GR.data = GR.data || {};
+  GR.data.periodic = {
+    elements: ELEMENTS,
+    byZ: Object.fromEntries(ELEMENTS.map(e => [e.z, e])),
+    bySym: Object.fromEntries(ELEMENTS.map(e => [e.sym, e])),
+    gridPosition,
+    categories: [
+      ['alcalin', 'Alcalins'],
+      ['alcalino-terreux', 'Alcalino-terreux'],
+      ['transition', 'Métaux de transition'],
+      ['post-transition', 'Métaux pauvres'],
+      ['metalloide', 'Métalloïdes'],
+      ['non-metal', 'Non-métaux'],
+      ['halogene', 'Halogènes'],
+      ['gaz-noble', 'Gaz nobles'],
+      ['lanthanide', 'Lanthanides'],
+      ['actinide', 'Actinides'],
+      ['inconnu', 'Propriétés inconnues'],
+    ],
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * data/constants.js — Catalogue de constantes physiques.
+ *
+ * Chaque constante :
+ *   id      : identifiant utilisable dans Calculs (ex: 'c', 'h', 'hbar')
+ *   sym     : symbole d'affichage (LaTeX léger)
+ *   nm      : nom français
+ *   value   : valeur (nombre OU chaîne avec unité au format math.js, ex: '299792458 m/s')
+ *   unit    : unité (chaîne, vide si sans dimension)
+ *   cat     : catégorie ('universelles' | 'EM' | 'atomique' | 'thermo' | 'usuelles' | 'maths')
+ *   exact   : true si valeur définie par convention SI, false si mesurée
+ *   desc    : courte description
+ *
+ * Note : on stocke la "value" comme string contenant l'unité math.js, car
+ * c'est cette même chaîne qu'on va injecter dans le scope du parser via
+ * math.evaluate(value) au démarrage.
+ *
+ * Sources : CODATA 2018, SI Brochure 9e éd.
+ */
+(function (GR) {
+  'use strict';
+
+  const CONSTS = [
+    // --- Universelles ---
+    { id:'c',         sym:'c',         nm:'Vitesse de la lumière dans le vide',
+      value:'299792458 m/s', unit:'m/s', cat:'universelles', exact:true,
+      desc:'Définition exacte du mètre depuis 1983.' },
+    { id:'h',         sym:'h',         nm:'Constante de Planck',
+      value:'6.62607015e-34 J s', unit:'J·s', cat:'universelles', exact:true,
+      desc:'Quantum d\'action ; définit le kilogramme depuis 2019.' },
+    { id:'hbar',      sym:'ℏ',         nm:'Constante de Planck réduite',
+      value:'1.054571817e-34 J s', unit:'J·s', cat:'universelles', exact:false,
+      desc:'h / (2π).' },
+    { id:'G_const',   sym:'G',         nm:'Constante gravitationnelle',
+      value:'6.67430e-11 N m^2 / kg^2', unit:'m³·kg⁻¹·s⁻²', cat:'universelles', exact:false,
+      desc:'Constante de Newton.' },
+    { id:'g_0',       sym:'g₀',        nm:'Pesanteur standard',
+      value:'9.80665 m/s^2', unit:'m/s²', cat:'universelles', exact:true,
+      desc:'Accélération de pesanteur conventionnelle.' },
+    { id:'atm',       sym:'atm',       nm:'Atmosphère standard',
+      value:'101325 Pa', unit:'Pa', cat:'universelles', exact:true,
+      desc:'Pression de référence.' },
+
+    // --- Électromagnétisme ---
+    { id:'e_charge',  sym:'e',         nm:'Charge élémentaire',
+      value:'1.602176634e-19 C', unit:'C', cat:'EM', exact:true,
+      desc:'Définit le coulomb depuis 2019.' },
+    { id:'mu_0',      sym:'μ₀',        nm:'Perméabilité du vide',
+      value:'1.25663706212e-6 N/A^2', unit:'N·A⁻²', cat:'EM', exact:false,
+      desc:'≈ 4π × 10⁻⁷ (mesurée depuis 2019).' },
+    { id:'epsilon_0', sym:'ε₀',        nm:'Permittivité du vide',
+      value:'8.8541878128e-12 F/m', unit:'F/m', cat:'EM', exact:false,
+      desc:'1 / (μ₀ c²).' },
+    { id:'k_e',       sym:'kₑ',        nm:'Constante de Coulomb',
+      value:'8.9875517873681764e9 N m^2 / C^2', unit:'N·m²·C⁻²', cat:'EM', exact:false,
+      desc:'1 / (4π ε₀).' },
+    { id:'mu_B',      sym:'μ_B',       nm:'Magnéton de Bohr',
+      value:'9.2740100783e-24 J/T', unit:'J/T', cat:'EM', exact:false,
+      desc:'eℏ / (2 mₑ).' },
+    { id:'mu_N',      sym:'μ_N',       nm:'Magnéton nucléaire',
+      value:'5.0507837461e-27 J/T', unit:'J/T', cat:'EM', exact:false,
+      desc:'eℏ / (2 m_p).' },
+    { id:'Phi_0',     sym:'Φ₀',        nm:'Quantum de flux magnétique',
+      value:'2.067833848e-15 Wb', unit:'Wb', cat:'EM', exact:false,
+      desc:'h / (2e).' },
+
+    // --- Atomique / quantique ---
+    { id:'m_e',       sym:'mₑ',        nm:'Masse de l\'électron',
+      value:'9.1093837015e-31 kg', unit:'kg', cat:'atomique', exact:false, desc:null },
+    { id:'m_p',       sym:'m_p',       nm:'Masse du proton',
+      value:'1.67262192369e-27 kg', unit:'kg', cat:'atomique', exact:false, desc:null },
+    { id:'m_n',       sym:'m_n',       nm:'Masse du neutron',
+      value:'1.67492749804e-27 kg', unit:'kg', cat:'atomique', exact:false, desc:null },
+    { id:'m_u',       sym:'u',         nm:'Unité de masse atomique unifiée',
+      value:'1.66053906660e-27 kg', unit:'kg', cat:'atomique', exact:false, desc:null },
+    { id:'a_0',       sym:'a₀',        nm:'Rayon de Bohr',
+      value:'5.29177210903e-11 m', unit:'m', cat:'atomique', exact:false, desc:null },
+    { id:'Ry',        sym:'R_∞',       nm:'Constante de Rydberg',
+      value:'10973731.568160 1/m', unit:'1/m', cat:'atomique', exact:false, desc:null },
+    { id:'alpha',     sym:'α',         nm:'Constante de structure fine',
+      value:'7.2973525693e-3', unit:'', cat:'atomique', exact:false,
+      desc:'Sans dimension.' },
+    { id:'r_e',       sym:'rₑ',        nm:'Rayon classique de l\'électron',
+      value:'2.8179403262e-15 m', unit:'m', cat:'atomique', exact:false, desc:null },
+    { id:'lambda_C',  sym:'λ_C',       nm:'Longueur d\'onde Compton de l\'électron',
+      value:'2.42631023867e-12 m', unit:'m', cat:'atomique', exact:false, desc:null },
+
+    // --- Thermodynamique ---
+    { id:'k_B',       sym:'k_B',       nm:'Constante de Boltzmann',
+      value:'1.380649e-23 J/K', unit:'J/K', cat:'thermo', exact:true,
+      desc:'Définit le kelvin depuis 2019.' },
+    { id:'N_A',       sym:'N_A',       nm:'Nombre d\'Avogadro',
+      value:'6.02214076e23 1/mol', unit:'1/mol', cat:'thermo', exact:true,
+      desc:'Définit la mole depuis 2019.' },
+    { id:'R_gas',     sym:'R',         nm:'Constante des gaz parfaits',
+      value:'8.314462618 J/(mol K)', unit:'J·mol⁻¹·K⁻¹', cat:'thermo', exact:false,
+      desc:'N_A × k_B.' },
+    { id:'F_const',   sym:'F',         nm:'Constante de Faraday',
+      value:'96485.33212 C/mol', unit:'C/mol', cat:'thermo', exact:false,
+      desc:'N_A × e.' },
+    { id:'sigma_SB',  sym:'σ',         nm:'Constante de Stefan-Boltzmann',
+      value:'5.670374419e-8 W/(m^2 K^4)', unit:'W·m⁻²·K⁻⁴', cat:'thermo', exact:false,
+      desc:null },
+    { id:'b_wien',    sym:'b',         nm:'Constante de déplacement de Wien',
+      value:'2.897771955e-3 m K', unit:'m·K', cat:'thermo', exact:false, desc:null },
+    { id:'V_m',       sym:'V_m',       nm:'Volume molaire d\'un gaz parfait (STP)',
+      value:'22.41396954e-3 m^3 / mol', unit:'m³/mol', cat:'thermo', exact:false,
+      desc:'À T = 273.15 K et p = 100 kPa.' },
+
+    // --- Mathématiques ---
+    { id:'pi_const',  sym:'π',         nm:'Pi', value:'pi', unit:'', cat:'maths', exact:false,
+      desc:'Disponible via « pi » dans Calculs.' },
+    { id:'e_const',   sym:'e',         nm:'Constante d\'Euler', value:'e', unit:'', cat:'maths', exact:false,
+      desc:'Disponible via « e » dans Calculs.' },
+    { id:'phi',       sym:'φ',         nm:'Nombre d\'or',
+      value:'1.6180339887498948', unit:'', cat:'maths', exact:false,
+      desc:'(1 + √5) / 2.' },
+    { id:'gamma_em',  sym:'γ',         nm:'Constante d\'Euler-Mascheroni',
+      value:'0.5772156649015329', unit:'', cat:'maths', exact:false, desc:null },
+  ];
+
+  GR.data = GR.data || {};
+  GR.data.constants = {
+    list: CONSTS,
+    byId: Object.fromEntries(CONSTS.map(c => [c.id, c])),
+    categories: [
+      ['universelles', 'Universelles'],
+      ['EM',           'Électromagnétisme'],
+      ['atomique',     'Atomique & quantique'],
+      ['thermo',       'Thermodynamique'],
+      ['maths',        'Mathématiques'],
+    ],
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * data/units.js — Catalogue d'unités par grandeur physique.
+ *
+ * Chaque catégorie a :
+ *   id, nm, units: [ { sym, nm } ]
+ * où sym est l'identifiant math.js (ex: 'km/h') et nm le libellé français.
+ *
+ * Pour les unités composées (km/h, kWh, N·m…), math.js sait les manipuler
+ * directement, donc on peut les exposer comme n'importe quelle autre unité.
+ *
+ * Préfixes SI : liste complète pour la table de référence dans l'app.
+ */
+(function (GR) {
+  'use strict';
+
+  const CATS = [
+    { id:'longueur', nm:'Longueur', units: [
+      { sym:'pm',  nm:'picomètre' },
+      { sym:'nm',  nm:'nanomètre' },
+      { sym:'um',  nm:'micromètre' },
+      { sym:'mm',  nm:'millimètre' },
+      { sym:'cm',  nm:'centimètre' },
+      { sym:'m',   nm:'mètre' },
+      { sym:'km',  nm:'kilomètre' },
+      { sym:'inch',nm:'pouce' },
+      { sym:'ft',  nm:'pied' },
+      { sym:'yd',  nm:'yard' },
+      { sym:'mi',  nm:'mile' },
+      { sym:'nmi', nm:'mile nautique' },
+      { sym:'angstrom', nm:'ångström' },
+      { sym:'lightyear',nm:'année-lumière' },
+      { sym:'parsec',   nm:'parsec' },
+    ]},
+    { id:'masse', nm:'Masse', units: [
+      { sym:'ug',  nm:'microgramme' },
+      { sym:'mg',  nm:'milligramme' },
+      { sym:'g',   nm:'gramme' },
+      { sym:'kg',  nm:'kilogramme' },
+      { sym:'tonne',nm:'tonne (1000 kg)' },
+      { sym:'lbm', nm:'livre (avoirdupois)' },
+      { sym:'oz',  nm:'once' },
+      { sym:'grain',nm:'grain' },
+    ]},
+    { id:'temps', nm:'Temps', units: [
+      { sym:'ns',  nm:'nanoseconde' },
+      { sym:'us',  nm:'microseconde' },
+      { sym:'ms',  nm:'milliseconde' },
+      { sym:'s',   nm:'seconde' },
+      { sym:'min', nm:'minute' },
+      { sym:'h',   nm:'heure' },
+      { sym:'day', nm:'jour' },
+      { sym:'week',nm:'semaine' },
+      { sym:'month',nm:'mois (30 j)' },
+      { sym:'year',nm:'année (365.25 j)' },
+    ]},
+    { id:'vitesse', nm:'Vitesse', units: [
+      { sym:'m/s',  nm:'mètres par seconde' },
+      { sym:'km/h', nm:'kilomètres par heure' },
+      { sym:'mph',  nm:'miles par heure' },
+      { sym:'knot', nm:'nœud' },
+      { sym:'ft/s', nm:'pieds par seconde' },
+    ]},
+    { id:'acceleration', nm:'Accélération', units: [
+      { sym:'m/s^2',  nm:'m·s⁻²' },
+      { sym:'g_0',    nm:'pesanteur standard (9.80665 m·s⁻²)' },
+      { sym:'gal',    nm:'gal (cm·s⁻²)' },
+    ]},
+    { id:'force', nm:'Force', units: [
+      { sym:'mN',  nm:'millinewton' },
+      { sym:'N',   nm:'newton' },
+      { sym:'kN',  nm:'kilonewton' },
+      { sym:'dyn', nm:'dyne' },
+      { sym:'lbf', nm:'livre-force' },
+      { sym:'kgf', nm:'kilogramme-force' },
+    ]},
+    { id:'energie', nm:'Énergie / Travail / Chaleur', units: [
+      { sym:'mJ',   nm:'millijoule' },
+      { sym:'J',    nm:'joule' },
+      { sym:'kJ',   nm:'kilojoule' },
+      { sym:'MJ',   nm:'mégajoule' },
+      { sym:'cal',  nm:'calorie' },
+      { sym:'kcal', nm:'kilocalorie (Cal)' },
+      { sym:'Wh',   nm:'watt-heure' },
+      { sym:'kWh',  nm:'kilowatt-heure' },
+      { sym:'eV',   nm:'électron-volt' },
+      { sym:'erg',  nm:'erg' },
+      { sym:'BTU',  nm:'British thermal unit' },
+    ]},
+    { id:'puissance', nm:'Puissance', units: [
+      { sym:'mW',  nm:'milliwatt' },
+      { sym:'W',   nm:'watt' },
+      { sym:'kW',  nm:'kilowatt' },
+      { sym:'MW',  nm:'mégawatt' },
+      { sym:'hp',  nm:'horsepower' },
+    ]},
+    { id:'pression', nm:'Pression', units: [
+      { sym:'Pa',   nm:'pascal' },
+      { sym:'hPa',  nm:'hectopascal' },
+      { sym:'kPa',  nm:'kilopascal' },
+      { sym:'MPa',  nm:'mégapascal' },
+      { sym:'bar',  nm:'bar' },
+      { sym:'mbar', nm:'millibar' },
+      { sym:'atm',  nm:'atmosphère' },
+      { sym:'mmHg', nm:'mmHg (torr)' },
+      { sym:'psi',  nm:'livre par pouce² (psi)' },
+    ]},
+    { id:'temperature', nm:'Température', units: [
+      { sym:'K',     nm:'kelvin' },
+      { sym:'degC',  nm:'degré Celsius' },
+      { sym:'degF',  nm:'degré Fahrenheit' },
+      { sym:'degR',  nm:'degré Rankine' },
+    ]},
+    { id:'angle', nm:'Angle', units: [
+      { sym:'rad',   nm:'radian' },
+      { sym:'mrad',  nm:'milliradian' },
+      { sym:'deg',   nm:'degré' },
+      { sym:'grad',  nm:'grade' },
+      { sym:'cycle', nm:'tour complet' },
+      { sym:'arcmin',nm:'minute d\'arc' },
+      { sym:'arcsec',nm:'seconde d\'arc' },
+    ]},
+    { id:'surface', nm:'Surface', units: [
+      { sym:'mm^2',  nm:'millimètre²' },
+      { sym:'cm^2',  nm:'centimètre²' },
+      { sym:'m^2',   nm:'mètre²' },
+      { sym:'km^2',  nm:'kilomètre²' },
+      { sym:'are',   nm:'are (100 m²)' },
+      { sym:'hectare',nm:'hectare' },
+      { sym:'acre',  nm:'acre' },
+      { sym:'inch^2',nm:'pouce²' },
+      { sym:'ft^2',  nm:'pied²' },
+    ]},
+    { id:'volume', nm:'Volume', units: [
+      { sym:'mm^3',  nm:'millimètre³' },
+      { sym:'cm^3',  nm:'centimètre³ (= mL)' },
+      { sym:'L',     nm:'litre' },
+      { sym:'cl',    nm:'centilitre' },
+      { sym:'dl',    nm:'décilitre' },
+      { sym:'m^3',   nm:'mètre³' },
+      { sym:'gallon',nm:'gallon US' },
+      { sym:'inch^3',nm:'pouce³' },
+    ]},
+    { id:'frequence', nm:'Fréquence', units: [
+      { sym:'Hz',  nm:'hertz' },
+      { sym:'kHz', nm:'kilohertz' },
+      { sym:'MHz', nm:'mégahertz' },
+      { sym:'GHz', nm:'gigahertz' },
+      { sym:'rpm', nm:'tours par minute' },
+    ]},
+    { id:'charge', nm:'Charge électrique', units: [
+      { sym:'C',   nm:'coulomb' },
+      { sym:'mC',  nm:'millicoulomb' },
+      { sym:'uC',  nm:'microcoulomb' },
+      { sym:'nC',  nm:'nanocoulomb' },
+      { sym:'pC',  nm:'picocoulomb' },
+    ]},
+    { id:'courant', nm:'Courant', units: [
+      { sym:'uA',  nm:'microampère' },
+      { sym:'mA',  nm:'milliampère' },
+      { sym:'A',   nm:'ampère' },
+      { sym:'kA',  nm:'kiloampère' },
+    ]},
+    { id:'tension', nm:'Tension / DDP', units: [
+      { sym:'uV',  nm:'microvolt' },
+      { sym:'mV',  nm:'millivolt' },
+      { sym:'V',   nm:'volt' },
+      { sym:'kV',  nm:'kilovolt' },
+      { sym:'MV',  nm:'mégavolt' },
+    ]},
+    { id:'resistance', nm:'Résistance', units: [
+      { sym:'ohm', nm:'ohm' },
+      { sym:'kohm',nm:'kiloohm' },
+      { sym:'Mohm',nm:'mégaohm' },
+    ]},
+    { id:'capacite', nm:'Capacité', units: [
+      { sym:'pF',  nm:'picofarad' },
+      { sym:'nF',  nm:'nanofarad' },
+      { sym:'uF',  nm:'microfarad' },
+      { sym:'mF',  nm:'millifarad' },
+      { sym:'F',   nm:'farad' },
+    ]},
+    { id:'inductance', nm:'Inductance', units: [
+      { sym:'nH',  nm:'nanohenry' },
+      { sym:'uH',  nm:'microhenry' },
+      { sym:'mH',  nm:'millihenry' },
+      { sym:'H',   nm:'henry' },
+    ]},
+    { id:'magnetique', nm:'Champ magnétique', units: [
+      { sym:'uT',  nm:'microtesla' },
+      { sym:'mT',  nm:'millitesla' },
+      { sym:'T',   nm:'tesla' },
+      { sym:'gauss',nm:'gauss' },
+    ]},
+    { id:'flux', nm:'Flux magnétique', units: [
+      { sym:'Wb',  nm:'weber' },
+      { sym:'maxwell', nm:'maxwell' },
+    ]},
+    { id:'intensite_lum', nm:'Intensité lumineuse', units: [
+      { sym:'cd',  nm:'candela' },
+      { sym:'lm',  nm:'lumen (cd·sr)' },
+      { sym:'lx',  nm:'lux (lm/m²)' },
+    ]},
+    { id:'matiere', nm:'Quantité de matière', units: [
+      { sym:'mol',  nm:'mole' },
+      { sym:'mmol', nm:'millimole' },
+      { sym:'umol', nm:'micromole' },
+    ]},
+    { id:'donnees', nm:'Données informatiques', units: [
+      { sym:'b',   nm:'bit' },
+      { sym:'B',   nm:'octet (byte)' },
+      { sym:'kB',  nm:'kilobyte (10³)' },
+      { sym:'KiB', nm:'kibioctet (2¹⁰)' },
+      { sym:'MB',  nm:'mégabyte (10⁶)' },
+      { sym:'MiB', nm:'mébioctet (2²⁰)' },
+      { sym:'GB',  nm:'gigabyte (10⁹)' },
+      { sym:'GiB', nm:'gibioctet (2³⁰)' },
+      { sym:'TB',  nm:'terabyte (10¹²)' },
+      { sym:'TiB', nm:'tébioctet (2⁴⁰)' },
+    ]},
+  ];
+
+  // Préfixes SI complets, du plus grand au plus petit.
+  const SI_PREFIXES = [
+    ['Y','yotta',  1e24], ['Z','zetta', 1e21], ['E','exa',   1e18],
+    ['P','peta',   1e15], ['T','téra',  1e12], ['G','giga',  1e9],
+    ['M','méga',   1e6],  ['k','kilo',  1e3],  ['h','hecto', 1e2],
+    ['da','déca',  1e1],
+    ['',  '(unité)',1],
+    ['d','déci',   1e-1], ['c','centi', 1e-2], ['m','milli', 1e-3],
+    ['μ','micro',  1e-6], ['n','nano',  1e-9], ['p','pico',  1e-12],
+    ['f','femto',  1e-15],['a','atto',  1e-18],['z','zepto', 1e-21],
+    ['y','yocto',  1e-24],
+  ];
+
+  GR.data = GR.data || {};
+  GR.data.units = {
+    categories: CATS,
+    prefixes: SI_PREFIXES,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * math-engine.js — Wrapper autour de math.js.
+ *
+ * Responsabilités :
+ *   - Scope persistant de variables (ans, A..Z).
+ *   - Mode angulaire (rad/deg) via override des fonctions trig dans le scope.
+ *   - Alias francophones (pgcd, ppcm, frac).
+ *   - Injection des constantes physiques (data/constants.js) dans le scope.
+ *   - Évaluation d'expressions avec unités natives (math.js gère « 5 m + 3 cm »).
+ */
+(function (GR) {
+  'use strict';
+
+  let parser = null;
+  let angleMode = 'rad';
+  let nativeTrig = null;
+  // On garde la liste des id de constantes pour pouvoir les exclure du
+  // panneau "variables utilisateur" (qui ne montre que A..Z et ans).
+  const constantIds = new Set();
+
+  function ensureReady() {
+    if (parser) return;
+    if (!window.math) throw new Error('math.js non chargé');
+    parser = window.math.parser();
+    nativeTrig = {
+      sin: window.math.sin, cos: window.math.cos, tan: window.math.tan,
+      asin: window.math.asin, acos: window.math.acos, atan: window.math.atan,
+      atan2: window.math.atan2,
+    };
+    installAliases();
+    installConstants();
+    applyAngleMode();
+    restoreVarsFromState();
+  }
+
+  function installAliases() {
+    parser.set('pgcd', (...a) => window.math.gcd(...a));
+    parser.set('ppcm', (...a) => window.math.lcm(...a));
+    parser.set('frac', x => window.math.subtract(x, window.math.floor(x)));
+  }
+
+  // Charge toutes les constantes (data/constants.js) dans le scope parser.
+  // On évalue chaque chaîne « value » avec math.evaluate pour obtenir un
+  // Unit, un BigNumber ou un nombre — selon ce que contient la chaîne.
+  function installConstants() {
+    if (!GR.data || !GR.data.constants) return;
+    GR.data.constants.list.forEach(c => {
+      // pi et e sont déjà natifs dans math.js — on les saute pour ne pas
+      // shadow leur définition.
+      if (c.id === 'pi_const' || c.id === 'e_const') return;
+      try {
+        const v = window.math.evaluate(c.value);
+        parser.set(c.id, v);
+        constantIds.add(c.id);
+      } catch (e) {
+        console.warn(`Constante ${c.id} non injectée :`, e.message);
+      }
+    });
+  }
+
+  function applyAngleMode() {
+    const deg2rad = window.math.unit(1, 'deg').toNumber('rad');
+    const rad2deg = 1 / deg2rad;
+    if (angleMode === 'deg') {
+      parser.set('sin',  x => nativeTrig.sin(x * deg2rad));
+      parser.set('cos',  x => nativeTrig.cos(x * deg2rad));
+      parser.set('tan',  x => nativeTrig.tan(x * deg2rad));
+      parser.set('asin', x => nativeTrig.asin(x) * rad2deg);
+      parser.set('acos', x => nativeTrig.acos(x) * rad2deg);
+      parser.set('atan', x => nativeTrig.atan(x) * rad2deg);
+      parser.set('atan2',(y,x)=> nativeTrig.atan2(y,x) * rad2deg);
+    } else {
+      parser.set('sin',  nativeTrig.sin);
+      parser.set('cos',  nativeTrig.cos);
+      parser.set('tan',  nativeTrig.tan);
+      parser.set('asin', nativeTrig.asin);
+      parser.set('acos', nativeTrig.acos);
+      parser.set('atan', nativeTrig.atan);
+      parser.set('atan2', nativeTrig.atan2);
+    }
+  }
+
+  function setAngleMode(mode) {
+    angleMode = (mode === 'deg') ? 'deg' : 'rad';
+    if (parser) applyAngleMode();
+  }
+  function getAngleMode() { return angleMode; }
+
+  // Évalue. Toujours résilient (jamais de throw vers l'appelant).
+  function evaluate(expr) {
+    ensureReady();
+    const trimmed = (expr || '').trim();
+    if (!trimmed) return { ok:false, error:'Expression vide' };
+
+    let tex;
+    try {
+      tex = window.math.parse(trimmed).toTex({ parenthesis:'keep', implicit:'show' });
+    } catch (e) {
+      return { ok:false, error:e.message, expr:trimmed };
+    }
+
+    let result;
+    try { result = parser.evaluate(trimmed); }
+    catch (e) { return { ok:false, error:e.message, expr:trimmed, tex }; }
+
+    if (result && result.entries) result = result.entries[result.entries.length - 1];
+    if (typeof result === 'undefined') {
+      return { ok:true, expr:trimmed, tex, result:null, resultLatex:'' };
+    }
+    parser.set('ans', result);
+
+    const resultLatex = GR.latex.valueToLatex(result);
+    syncVarsToState();
+    return { ok:true, expr:trimmed, tex, result, resultLatex };
+  }
+
+  // ---------- Variables utilisateur ----------
+  function isUserVarName(name) {
+    if (constantIds.has(name)) return false;
+    return /^[A-Z]$/.test(name) || name === 'ans';
+  }
+
+  function syncVarsToState() {
+    if (!parser) return;
+    const all = parser.getAll();
+    const out = {};
+    for (const k of Object.keys(all)) {
+      if (!isUserVarName(k)) continue;
+      try { out[k] = window.math.format(all[k], { precision: 14 }); } catch {}
+    }
+    GR.state.set({ vars: out });
+  }
+
+  function restoreVarsFromState() {
+    const saved = GR.state.get().vars || {};
+    for (const [name, value] of Object.entries(saved)) {
+      try { parser.set(name, window.math.evaluate(value)); }
+      catch (e) { console.warn(`Variable ${name} non restaurable :`, e.message); }
+    }
+  }
+
+  function listVars() {
+    if (!parser) return {};
+    const all = parser.getAll();
+    const out = {};
+    for (const k of Object.keys(all)) if (isUserVarName(k)) out[k] = all[k];
+    return out;
+  }
+
+  function clearVars() {
+    if (!parser) return;
+    for (const k of Object.keys(parser.getAll())) {
+      if (isUserVarName(k)) parser.remove(k);
+    }
+    GR.state.set({ vars: {} });
+  }
+
+  // Helper : convertir une valeur (chaîne avec unité) vers une autre unité.
+  // Renvoie { ok, valueLatex, valueText } ou { ok:false, error }.
+  function convertUnit(value, fromUnit, toUnit) {
+    ensureReady();
+    try {
+      const v = window.math.evaluate(`(${value} ${fromUnit}) to ${toUnit}`);
+      return { ok:true, value:v, text:window.math.format(v, { precision:10 }) };
+    } catch (e) {
+      return { ok:false, error:e.message };
+    }
+  }
+
+  GR.engine = {
+    evaluate,
+    setAngleMode, getAngleMode,
+    listVars, clearVars,
+    convertUnit,
+    constantIds,   // exposé pour Réglages / debug
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * keyboard.js — Raccourcis clavier globaux.
+ *
+ * On centralise les raccourcis ici pour pouvoir les afficher dans la sidebar
+ * et éviter les conflits entre apps. Une app peut ajouter ses propres
+ * raccourcis locaux dans son mount(), mais le routeur d'apps reste maître.
+ */
+(function (GR) {
+  'use strict';
+
+  // Liste des raccourcis globaux. Chaque entrée :
+  //   { combo: 'Ctrl+1', label: 'Calculs', handler: () => ... }
+  const handlers = [];
+
+  function register(combo, label, handler) {
+    handlers.push({ combo, label, handler });
+  }
+
+  // Convertit un évènement clavier en chaîne canonique : "Ctrl+Shift+K"
+  function eventToCombo(e) {
+    const parts = [];
+    if (e.ctrlKey || e.metaKey) parts.push('Ctrl'); // on traite Cmd ≡ Ctrl
+    if (e.shiftKey) parts.push('Shift');
+    if (e.altKey) parts.push('Alt');
+    // Touches lettres/chiffres : on prend la valeur "key" en majuscule.
+    let k = e.key;
+    if (k === 'Escape') k = 'Esc';
+    if (k.length === 1) k = k.toUpperCase();
+    parts.push(k);
+    return parts.join('+');
+  }
+
+  function init() {
+    window.addEventListener('keydown', (e) => {
+      const combo = eventToCombo(e);
+      // On ignore les raccourcis simples si l'utilisateur tape dans un input.
+      // Mais on autorise les Ctrl+xxx même dans un input (ex : Ctrl+1).
+      const inField = e.target.matches?.('input, textarea, [contenteditable="true"]');
+      const isModified = e.ctrlKey || e.metaKey || e.altKey;
+
+      for (const h of handlers) {
+        if (h.combo === combo) {
+          if (inField && !isModified && h.combo !== 'Esc') continue;
+          e.preventDefault();
+          h.handler();
+          return;
+        }
+      }
+    });
+  }
+
+  function list() { return handlers.slice(); }
+
+  GR.keyboard = { register, init, list };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <!-- Apps -->
+  <script>
+/**
+ * apps/calculs.js — Application "Calculs".
+ *
+ * Supporte directement les unités (math.js le fait nativement) et les
+ * constantes physiques (injectées via data/constants.js).
+ *
+ * Exemples utilisables :
+ *   2*sin(pi/4) + sqrt(2)
+ *   (1/2) * 2 kg * (3 m/s)^2   →  9 J  (analyse dimensionnelle gratuite)
+ *   c * 1 ns to mm             →  299.79… mm
+ *   h * 5e14 Hz to eV          →  énergie d'un photon visible
+ *   N_A * k_B                  →  R (constante des gaz)
+ *   3 m + 25 cm                →  3.25 m
+ *   A = 5,  A^2 + 3            →  28
+ */
+(function (GR) {
+  'use strict';
+
+  const VKB_SECTIONS = [
+    { title:'Nombres & opérateurs', keys:[
+      ['7','7'],['8','8'],['9','9'],['÷','/'],
+      ['4','4'],['5','5'],['6','6'],['×','*'],
+      ['1','1'],['2','2'],['3','3'],['−','-'],
+      ['0','0'],['.','.'],['(','('],[')',')'],
+      ['+','+'],['^','^'],['=','='],['ans','ans'],
+    ]},
+    { title:'Fonctions', keys:[
+      ['sin','sin('],['cos','cos('],['tan','tan('],['π','pi'],
+      ['asin','asin('],['acos','acos('],['atan','atan('],['e','e'],
+      ['ln','ln('],['log','log10('],['exp','exp('],['√','sqrt('],
+      ['x²','^2'],['xⁿ','^'],['1/x','1/'],['|x|','abs('],
+      ['n!','!'],['mod','mod'],['⌊⌋','floor('],['⌈⌉','ceil('],
+    ]},
+    { title:'Unités usuelles', keys:[
+      ['m','m'],['cm','cm'],['mm','mm'],['km','km'],
+      ['kg','kg'],['g','g'],['s','s'],['Hz','Hz'],
+      ['N','N'],['J','J'],['W','W'],['Pa','Pa'],
+      ['V','V'],['A','A'],['Ω','ohm'],['°C','degC'],
+      ['to','to'],['°','deg'],['rad','rad'],['eV','eV'],
+    ]},
+    { title:'Constantes', keys:[
+      ['c','c'],['h','h'],['ℏ','hbar'],['G','G_const'],
+      ['e⁻','e_charge'],['k_B','k_B'],['N_A','N_A'],['R','R_gas'],
+      ['ε₀','epsilon_0'],['μ₀','mu_0'],['mₑ','m_e'],['m_p','m_p'],
+      ['g₀','g_0'],['σ','sigma_SB'],['α','alpha'],['φ','phi'],
+    ]},
+    { title:'Variables', keys:[
+      ['A','A'],['B','B'],['C','C'],['D','D'],
+      ['X','X'],['Y','Y'],['Z','Z'],['ans','ans'],
+    ]},
+  ];
+
+  let elInput, elPreview, elHistory, elVarsPanel, elAngleToggle;
+  let unsubscribe = null;
+  let histCursor = -1;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const header = document.createElement('div');
+    header.className = 'app-header';
+    header.innerHTML = `
+      <span class="app-title">Calculs</span>
+      <span class="app-subtitle">unités &amp; constantes prises en charge</span>
+      <div class="app-tools">
+        <div class="seg" aria-label="Mode angulaire">
+          <button data-mode="rad">RAD</button>
+          <button data-mode="deg">DEG</button>
+        </div>
+        <button class="btn danger" id="clear-history" title="Effacer l'historique">Effacer</button>
+      </div>
+    `;
+    container.appendChild(header);
+    elAngleToggle = header.querySelector('.seg');
+    elAngleToggle.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-mode]'); if (!b) return;
+      GR.engine.setAngleMode(b.dataset.mode);
+      GR.state.set({ angleMode: b.dataset.mode });
+      updateAngleToggle();
+    });
+    header.querySelector('#clear-history').addEventListener('click', () => {
+      if (confirm('Effacer tout l\'historique ?')) GR.state.clearHistory();
+    });
+
+    const body = document.createElement('div');
+    body.className = 'calculs-body';
+    body.innerHTML = `
+      <div class="history" id="history"></div>
+      <div class="vars-panel" id="vars-panel"></div>
+      <div class="input-area">
+        <div class="input-preview empty" id="input-preview">Tapez une expression…</div>
+        <div class="input-row">
+          <input type="text" class="input-line" id="input-line"
+                 autocomplete="off" autocorrect="off" autocapitalize="off"
+                 spellcheck="false" placeholder="ex : (1/2) * 2 kg * (3 m/s)^2">
+          <button class="btn primary" id="btn-eval">Entrée ⏎</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(body);
+
+    elInput     = body.querySelector('#input-line');
+    elPreview   = body.querySelector('#input-preview');
+    elHistory   = body.querySelector('#history');
+    elVarsPanel = body.querySelector('#vars-panel');
+
+    elInput.addEventListener('input', updatePreview);
+    elInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter')     { e.preventDefault(); doEval(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); navigateHistory(-1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); navigateHistory(+1); }
+    });
+    body.querySelector('#btn-eval').addEventListener('click', doEval);
+
+    unsubscribe = GR.state.subscribe(() => {
+      renderHistory(); renderVars(); updateAngleToggle();
+    });
+    updateAngleToggle();
+    renderHistory();
+    renderVars();
+    setTimeout(() => elInput.focus(), 0);
+  }
+
+  function unmount() { if (unsubscribe) { unsubscribe(); unsubscribe = null; } }
+
+  function updateAngleToggle() {
+    const mode = GR.engine.getAngleMode();
+    elAngleToggle.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+  }
+
+  function updatePreview() {
+    const expr = elInput.value;
+    if (!expr.trim()) {
+      elPreview.className = 'input-preview empty';
+      elPreview.textContent = 'Tapez une expression…';
+      return;
+    }
+    const tex = GR.latex.exprToLatex(expr);
+    if (tex === null) {
+      elPreview.className = 'input-preview error';
+      elPreview.textContent = expr;
+    } else {
+      elPreview.className = 'input-preview';
+      GR.latex.render(elPreview, tex);
+    }
+  }
+
+  function navigateHistory(direction) {
+    const hist = GR.state.get().history;
+    if (!hist.length) return;
+    if (histCursor === -1 && direction < 0) histCursor = hist.length;
+    histCursor = Math.max(0, Math.min(hist.length, histCursor + direction));
+    if (histCursor === hist.length) elInput.value = '';
+    else elInput.value = hist[histCursor].expr;
+    updatePreview();
+  }
+
+  function doEval() {
+    const expr = elInput.value;
+    if (!expr.trim()) return;
+    const r = GR.engine.evaluate(expr);
+    if (!r.ok) {
+      GR.state.pushHistory({ expr, latex:r.tex||null, isError:true, error:r.error });
+    } else {
+      GR.state.pushHistory({
+        expr:r.expr, latex:r.tex,
+        result: typeof r.result === 'object' ? null : r.result,
+        resultLatex: r.resultLatex,
+        isError:false,
+      });
+    }
+    elInput.value = '';
+    histCursor = -1;
+    updatePreview();
+  }
+
+  function renderHistory() {
+    const hist = GR.state.get().history;
+    elHistory.innerHTML = '';
+    if (!hist.length) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.innerHTML = `
+        <p>Tape une expression. Quelques pistes :</p>
+        <div class="tips">
+          <div>2*sin(pi/4) + sqrt(2)</div>
+          <div>3 m + 25 cm</div>
+          <div>(1/2) * 2 kg * (3 m/s)^2</div>
+          <div>c * 1 ns to mm</div>
+          <div>h * 5e14 Hz to eV</div>
+          <div>A = 5,  A^2 + 3</div>
+        </div>`;
+      elHistory.appendChild(empty);
+      return;
+    }
+    for (let i = hist.length - 1; i >= 0; i--) {
+      elHistory.appendChild(renderEntry(hist[i]));
+    }
+  }
+
+  function renderEntry(entry) {
+    const div = document.createElement('div');
+    div.className = 'hist-entry';
+    const inp = document.createElement('div');
+    inp.className = 'hist-input';
+    inp.title = 'Cliquer pour réutiliser';
+    if (entry.latex) GR.latex.render(inp, entry.latex);
+    else inp.textContent = entry.expr;
+    inp.addEventListener('click', () => {
+      elInput.value = entry.expr; elInput.focus(); updatePreview();
+    });
+    div.appendChild(inp);
+
+    if (entry.isError) {
+      const err = document.createElement('div');
+      err.className = 'hist-error';
+      err.textContent = '⚠ ' + entry.error;
+      div.appendChild(err);
+    } else {
+      const out = document.createElement('div');
+      out.className = 'hist-output';
+      out.title = 'Cliquer pour insérer';
+      if (entry.resultLatex) GR.latex.render(out, '= ' + entry.resultLatex);
+      else out.textContent = '= ' + (entry.result ?? '');
+      out.addEventListener('click', () => {
+        insertAtCursor(elInput, '(' + entry.expr + ')');
+        elInput.focus(); updatePreview();
+      });
+      div.appendChild(out);
+    }
+    return div;
+  }
+
+  function renderVars() {
+    const vars = GR.state.get().vars || {};
+    elVarsPanel.innerHTML = '';
+    const keys = Object.keys(vars).sort();
+    if (!keys.length) {
+      elVarsPanel.innerHTML = '<span style="opacity:.6">Aucune variable. Tape « A = 5 » pour en créer.</span>';
+      return;
+    }
+    keys.forEach(k => {
+      const chip = document.createElement('span');
+      chip.className = 'var-chip';
+      chip.textContent = `${k} = ${vars[k]}`;
+      chip.title = `Insérer « ${k} »`;
+      chip.addEventListener('click', () => {
+        insertAtCursor(elInput, k); elInput.focus(); updatePreview();
+      });
+      elVarsPanel.appendChild(chip);
+    });
+  }
+
+  function renderVKB(container) {
+    container.innerHTML = '';
+    VKB_SECTIONS.forEach(sec => {
+      const s = document.createElement('div');
+      s.className = 'vkb-section';
+      const h = document.createElement('h4');
+      h.textContent = sec.title;
+      s.appendChild(h);
+      const grid = document.createElement('div');
+      grid.className = 'vkb-grid';
+      sec.keys.forEach(([label, value]) => {
+        const b = document.createElement('button');
+        b.className = 'vkb-key';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          if (!elInput) return;
+          insertAtCursor(elInput, value);
+          elInput.focus(); updatePreview();
+        });
+        grid.appendChild(b);
+      });
+      s.appendChild(grid);
+      container.appendChild(s);
+    });
+  }
+
+  function insertAtCursor(input, text) {
+    const s = input.selectionStart ?? input.value.length;
+    const e = input.selectionEnd ?? input.value.length;
+    input.value = input.value.slice(0, s) + text + input.value.slice(e);
+    input.setSelectionRange(s + text.length, s + text.length);
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.calculs = {
+    id:'calculs', name:'Calculs', icon:'∑', available:true,
+    mount, unmount, renderVKB,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/periodique.js — Tableau périodique enrichi.
+ *
+ * Grille 18 × 7 + lanthanides/actinides en dessous. Click sur un élément
+ * ouvre un panneau de détails (à droite) avec toutes les propriétés
+ * disponibles (cf. data/periodic.js).
+ *
+ * Filtres : par catégorie (via la légende), par bloc s/p/d/f, et
+ * recherche par nom ou symbole.
+ */
+(function (GR) {
+  'use strict';
+
+  let elGrid, elDetail, elSearch;
+  let activeFilter = null;     // 'alcalin' | 'transition' | ... ou null
+  let activeBlock  = null;     // 's' | 'p' | 'd' | 'f' | null
+
+  function mount(container) {
+    container.innerHTML = '';
+    const root = document.createElement('div');
+    root.className = 'periodique';
+    container.appendChild(root);
+
+    // Header
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Tableau périodique</span>
+      <span class="app-subtitle">118 éléments — clic pour les détails</span>
+      <div class="app-tools">
+        <div class="seg" id="block-seg">
+          <button data-b="" class="active">TOUS</button>
+          <button data-b="s">s</button>
+          <button data-b="p">p</button>
+          <button data-b="d">d</button>
+          <button data-b="f">f</button>
+        </div>
+        <input class="field" id="pt-search" placeholder="Rechercher (nom ou symbole)" style="width:220px">
+      </div>
+    `;
+    root.appendChild(head);
+
+    // Toolbar / légende
+    const tb = document.createElement('div');
+    tb.className = 'periodique-toolbar';
+    tb.innerHTML = `
+      <div class="legend">${GR.data.periodic.categories.map(([id, nm]) =>
+        `<span class="legend-dot ${id}" data-cat="${id}" style="cursor:pointer">${nm}</span>`).join('')}
+      </div>
+    `;
+    root.appendChild(tb);
+
+    // Grille
+    elGrid = document.createElement('div');
+    elGrid.className = 'periodique-grid';
+    root.appendChild(elGrid);
+
+    // Panneau de détails (initialement masqué)
+    elDetail = document.createElement('div');
+    elDetail.className = 'el-detail';
+    elDetail.innerHTML = '';
+    document.body.appendChild(elDetail);
+
+    // Évènements
+    elSearch = head.querySelector('#pt-search');
+    elSearch.addEventListener('input', renderGrid);
+    head.querySelector('#block-seg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-b]'); if (!b) return;
+      activeBlock = b.dataset.b || null;
+      head.querySelectorAll('#block-seg button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      renderGrid();
+    });
+    tb.querySelectorAll('.legend-dot').forEach(d => {
+      d.addEventListener('click', () => {
+        activeFilter = (activeFilter === d.dataset.cat) ? null : d.dataset.cat;
+        tb.querySelectorAll('.legend-dot').forEach(x => x.style.fontWeight = '');
+        if (activeFilter) d.style.fontWeight = '700';
+        renderGrid();
+      });
+    });
+
+    renderGrid();
+  }
+
+  function unmount() {
+    // On retire le panneau de détail du DOM en sortant de l'app.
+    if (elDetail && elDetail.parentNode) elDetail.parentNode.removeChild(elDetail);
+  }
+
+  function isVisible(el) {
+    if (activeBlock && el.block !== activeBlock) return false;
+    if (activeFilter && el.cat !== activeFilter) return false;
+    const q = (elSearch?.value || '').trim().toLowerCase();
+    if (q) {
+      return el.sym.toLowerCase().includes(q)
+          || el.nm.toLowerCase().includes(q)
+          || (el.nmEn && el.nmEn.toLowerCase().includes(q))
+          || String(el.z) === q;
+    }
+    return true;
+  }
+
+  function renderGrid() {
+    elGrid.innerHTML = '';
+    // On crée 10 rangées (1..7 + ligne vide + 2 séries Ln/Ac).
+    const cells = {};
+    GR.data.periodic.elements.forEach(e => {
+      const pos = GR.data.periodic.gridPosition(e);
+      const cell = document.createElement('button');
+      cell.className = 'el';
+      cell.dataset.cat = e.cat;
+      cell.dataset.z = e.z;
+      cell.style.gridRow = pos.row;
+      cell.style.gridColumn = pos.col;
+      cell.innerHTML = `
+        <span class="z">${e.z}</span>
+        <span class="sym">${e.sym}</span>
+        <span class="mass">${formatMass(e.mass)}</span>
+      `;
+      if (!isVisible(e)) cell.classList.add('dim');
+      cell.addEventListener('click', () => showDetail(e));
+      cell.title = `${e.nm} (${e.sym}) — Z = ${e.z}`;
+      cells[e.z] = cell;
+      elGrid.appendChild(cell);
+    });
+
+    // Petits marqueurs « 57-71 » et « 89-103 » dans les vraies cases de groupe 3.
+    // Ces marqueurs sont remplacés par La/Ac (gridPosition les y met) mais
+    // on garde une étiquette discrète sur la ligne du dessous.
+    const ln = document.createElement('div');
+    ln.style.cssText = 'grid-row:9;grid-column:2;font-size:10px;color:var(--ink-3);text-align:right;align-self:center;padding-right:6px';
+    ln.textContent = '57-71';
+    elGrid.appendChild(ln);
+    const ac = document.createElement('div');
+    ac.style.cssText = 'grid-row:10;grid-column:2;font-size:10px;color:var(--ink-3);text-align:right;align-self:center;padding-right:6px';
+    ac.textContent = '89-103';
+    elGrid.appendChild(ac);
+  }
+
+  function formatMass(m) {
+    if (Array.isArray(m)) return `[${m[0]}]`;
+    if (typeof m !== 'number') return '';
+    if (m < 100) return m.toFixed(3);
+    return m.toFixed(2);
+  }
+
+  // ----------------- Détail d'un élément -----------------
+  function showDetail(e) {
+    const valence = computeValence(e.cfg);
+    const quantum = formatQuantum(valence);
+    elDetail.innerHTML = `
+      <button class="close" aria-label="Fermer">✕</button>
+      <div style="display:flex;align-items:flex-start;gap:18px">
+        <div>
+          <p class="symbig" style="color:${catColor(e.cat)}">${e.sym}</p>
+          <p class="nm">${e.nm}</p>
+          <p style="margin:0;color:var(--ink-3);font-size:12px">${e.nmEn || ''}</p>
+        </div>
+        <div style="flex:1"></div>
+      </div>
+
+      <h3>Identité</h3>
+      ${row('Numéro atomique (Z)', e.z)}
+      ${row('Masse atomique', Array.isArray(e.mass) ? `${e.mass[0]} u (isotope stable)` : `${e.mass} u`)}
+      ${row('Catégorie', categoryLabel(e.cat))}
+      ${row('Bloc', e.block + ' (' + blockLabel(e.block) + ')')}
+      ${row('Période / Groupe', `${e.period} / ${e.group ?? '—'}`)}
+      ${row('Découverte', e.discYr ?? 'antiquité')}
+
+      <h3>Structure électronique</h3>
+      ${row('Configuration', e.cfg)}
+      ${row('Électrons de valence', valence.count ?? '—')}
+      ${row('Nombres quantiques (val.)', quantum)}
+      ${row('Spin (chaque e⁻)', '±½')}
+      ${row('Électronégativité (Pauling)', e.en ?? '—')}
+      ${row('États d\'oxydation', (e.ox && e.ox.length) ? e.ox.map(o => o > 0 ? '+'+o : o).join(', ') : '—')}
+
+      <h3>Propriétés physiques</h3>
+      ${row('Rayon atomique', e.ar ? e.ar + ' pm' : '—')}
+      ${row('Rayon covalent', e.cr ? e.cr + ' pm' : '—')}
+      ${row('Rayon de Van der Waals', e.vdwr ? e.vdwr + ' pm' : '—')}
+      ${row('Point de fusion', e.mp ? `${e.mp} K (${(e.mp-273.15).toFixed(1)} °C)` : '—')}
+      ${row('Point d\'ébullition', e.bp ? `${e.bp} K (${(e.bp-273.15).toFixed(1)} °C)` : '—')}
+      ${row('Densité (STP)', e.dens ? `${e.dens} g/cm³` : '—')}
+      ${row('Structure cristalline', e.xtal ?? '—')}
+
+      <h3>Isotopes</h3>
+      ${(e.iso && e.iso.length) ? e.iso.map(i =>
+        `<div class="row"><span class="k">${e.sym}-${i.a}</span>` +
+        `<span class="v">${i.ab !== null && i.ab !== undefined ? i.ab + ' %' : 'radioactif'}</span></div>`
+      ).join('') : '<div class="row"><span class="k">—</span><span class="v">aucun listé</span></div>'}
+
+      ${e.notes ? `<h3>Note</h3><p style="font-size:13px;color:var(--ink-2);margin:0">${e.notes}</p>` : ''}
+    `;
+    elDetail.classList.add('open');
+    elDetail.querySelector('.close').addEventListener('click', hideDetail);
+  }
+
+  function hideDetail() { elDetail.classList.remove('open'); }
+
+  function row(k, v) {
+    return `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  }
+
+  function categoryLabel(cat) {
+    const c = GR.data.periodic.categories.find(([id]) => id === cat);
+    return c ? c[1] : cat;
+  }
+  function blockLabel(b) {
+    return { s:'alcalins/alc-terreux', p:'principaux', d:'transition', f:'lanth/actin' }[b] || '';
+  }
+  function catColor(cat) {
+    // Repris des couleurs des dots dans theme.css.
+    return ({
+      'alcalin':'#d4452b','alcalino-terreux':'#c47514','transition':'#9c6a3a',
+      'post-transition':'#6b7e4a','metalloide':'#3e7a4a','non-metal':'#2e6bd4',
+      'halogene':'#5a4eb0','gaz-noble':'#a04a90','lanthanide':'#c44676',
+      'actinide':'#c45a30','inconnu':'#777'
+    })[cat] || 'var(--ink)';
+  }
+
+  // Calcule, à partir de la configuration condensée (« [Ar] 3d⁵ 4s¹ »),
+  // les électrons de valence et leur(s) nombre(s) quantique(s).
+  // Logique simple : on regarde la dernière coquille (max n) et on
+  // compte les électrons dont le n est ce maximum.
+  function computeValence(cfg) {
+    if (!cfg) return { count: null, shells: [] };
+    // Tokens type "4s¹", "3d¹⁰", "2p⁶", "4f¹⁴"…
+    const tokens = cfg.replace(/\[[^\]]+\]\s*/, '').trim().split(/\s+/);
+    const sup = { '⁰':0,'¹':1,'²':2,'³':3,'⁴':4,'⁵':5,'⁶':6,'⁷':7,'⁸':8,'⁹':9 };
+    const parsed = tokens.map(t => {
+      const m = t.match(/^(\d+)([spdf])([⁰-⁹¹]+)$/);
+      if (!m) return null;
+      const n = parseInt(m[1], 10);
+      const l = m[2];
+      const num = [...m[3]].reduce((a,c) => a*10 + (sup[c] ?? 0), 0);
+      return { n, l, num };
+    }).filter(Boolean);
+    if (!parsed.length) return { count: null, shells: [] };
+    const maxN = Math.max(...parsed.map(p => p.n));
+    const valence = parsed.filter(p => p.n === maxN);
+    return {
+      count: valence.reduce((s,p) => s + p.num, 0),
+      shells: valence,
+    };
+  }
+
+  function formatQuantum(val) {
+    if (!val.shells.length) return '—';
+    const lMap = { s:0, p:1, d:2, f:3 };
+    return val.shells.map(s => {
+      const l = lMap[s.l];
+      const mlRange = `[${-l}…${l}]`;
+      return `n=${s.n}, ℓ=${l} (${s.l}), mₗ ∈ ${mlRange}`;
+    }).join(' ; ');
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.periodique = {
+    id:'periodique', name:'Tableau périodique', icon:'P̲e', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/unites.js — Convertisseur d'unités + table des préfixes SI.
+ *
+ * Trois zones :
+ *   - Catégories à gauche (Longueur, Masse, …)
+ *   - Ligne « valeur + unité source → unité cible + résultat » en haut
+ *   - Liste des unités de la catégorie en grille (un clic = sélectionne)
+ *   - Sous : table de tous les préfixes SI (référence)
+ *
+ * On délègue toute la conversion à math.js via GR.engine.convertUnit().
+ */
+(function (GR) {
+  'use strict';
+
+  let activeCat = 'longueur';
+  let unitFrom  = 'm';
+  let unitTo    = 'cm';
+  let value     = '1';
+  let elValue, elResult, elFromName, elToName, elCatList, elUnitList;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Unités</span>
+      <span class="app-subtitle">conversion + analyse dimensionnelle gratuite via Calculs</span>
+    `;
+    container.appendChild(head);
+
+    const root = document.createElement('div');
+    root.className = 'units';
+    container.appendChild(root);
+
+    // ---- colonne gauche : catégories
+    elCatList = document.createElement('div');
+    elCatList.className = 'units-cats';
+    GR.data.units.categories.forEach(cat => {
+      const b = document.createElement('div');
+      b.className = 'units-cat' + (cat.id === activeCat ? ' active' : '');
+      b.textContent = cat.nm;
+      b.dataset.id = cat.id;
+      b.addEventListener('click', () => {
+        activeCat = cat.id;
+        // Réinitialise les unités sur la 1re et 2e de la catégorie.
+        const cat0 = GR.data.units.categories.find(c => c.id === activeCat);
+        unitFrom = cat0.units[0].sym;
+        unitTo   = (cat0.units[1] || cat0.units[0]).sym;
+        renderAll();
+      });
+      elCatList.appendChild(b);
+    });
+    root.appendChild(elCatList);
+
+    // ---- colonne droite : panneau de conversion
+    const panel = document.createElement('div');
+    panel.className = 'units-panel';
+    panel.innerHTML = `
+      <div class="units-input">
+        <input class="value-in" id="u-val" value="${value}" autocomplete="off">
+        <div>
+          <div class="field" id="u-from" style="display:flex;align-items:center;justify-content:center;cursor:default">m</div>
+          <div id="u-from-nm" style="font-size:11px;color:var(--ink-3);text-align:center;margin-top:2px">mètre</div>
+        </div>
+        <div class="arrow">→</div>
+        <div>
+          <div class="field" id="u-to" style="display:flex;align-items:center;justify-content:center;cursor:default">cm</div>
+          <div id="u-to-nm" style="font-size:11px;color:var(--ink-3);text-align:center;margin-top:2px">centimètre</div>
+        </div>
+      </div>
+      <div class="units-input" style="margin-top:var(--s-2);grid-template-columns:1fr">
+        <div class="result" id="u-result">—</div>
+      </div>
+
+      <h3 style="margin:var(--s-5) 0 var(--s-2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3)">
+        Unités disponibles
+      </h3>
+      <p style="font-size:12px;color:var(--ink-3);margin:0 0 var(--s-2)">
+        Clic gauche : choisir l'unité <strong>source</strong>. Maj+clic ou clic droit : unité <strong>cible</strong>.
+      </p>
+      <div class="units-list" id="u-list"></div>
+
+      <h3 style="margin:var(--s-5) 0 var(--s-2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3)">
+        Préfixes SI
+      </h3>
+      <p style="font-size:12px;color:var(--ink-3);margin:0 0 var(--s-2)">
+        Référence complète. À combiner avec n'importe quelle unité de base : MHz, μC, GPa, nF…
+      </p>
+      <div class="units-prefix-table">
+        <div class="units-prefix-row head">
+          <div>Préfixe</div><div>Symbole</div><div>Facteur</div><div>Exemple</div>
+        </div>
+        ${GR.data.units.prefixes.map(([s, nm, f]) => `
+          <div class="units-prefix-row">
+            <div>${nm}</div>
+            <div>${s || '—'}</div>
+            <div>${formatFactor(f)}</div>
+            <div>${exampleFor(s)}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    root.appendChild(panel);
+
+    elValue    = panel.querySelector('#u-val');
+    elResult   = panel.querySelector('#u-result');
+    elFromName = panel.querySelector('#u-from-nm');
+    elToName   = panel.querySelector('#u-to-nm');
+    elUnitList = panel.querySelector('#u-list');
+    elValue.addEventListener('input', recompute);
+
+    renderAll();
+  }
+
+  function unmount() {}
+
+  function renderAll() {
+    // Met à jour la liste des catégories (active class)
+    elCatList.querySelectorAll('.units-cat').forEach(c => {
+      c.classList.toggle('active', c.dataset.id === activeCat);
+    });
+    // Met à jour les libellés et la liste d'unités
+    document.querySelector('#u-from').textContent = unitFrom;
+    document.querySelector('#u-to').textContent   = unitTo;
+    const cat = GR.data.units.categories.find(c => c.id === activeCat);
+    elFromName.textContent = cat.units.find(u => u.sym === unitFrom)?.nm ?? '';
+    elToName.textContent   = cat.units.find(u => u.sym === unitTo)?.nm ?? '';
+
+    elUnitList.innerHTML = '';
+    cat.units.forEach(u => {
+      const it = document.createElement('div');
+      it.className = 'uitem' + (u.sym === unitFrom ? ' active' : '');
+      it.innerHTML = `<span>${u.sym}</span><span class="unit-name">${u.nm}</span>`;
+      it.addEventListener('click', (ev) => {
+        if (ev.shiftKey) unitTo = u.sym; else unitFrom = u.sym;
+        renderAll();
+      });
+      it.addEventListener('contextmenu', (ev) => {
+        ev.preventDefault();
+        unitTo = u.sym; renderAll();
+      });
+      elUnitList.appendChild(it);
+    });
+    recompute();
+  }
+
+  function recompute() {
+    value = elValue.value;
+    const r = GR.engine.convertUnit(value, unitFrom, unitTo);
+    if (!r.ok) {
+      elResult.textContent = '⚠ ' + r.error;
+      elResult.style.color = 'var(--bad)';
+    } else {
+      elResult.textContent = r.text;
+      elResult.style.color = '';
+    }
+  }
+
+  function formatFactor(f) {
+    if (f === 1) return '1';
+    const exp = Math.round(Math.log10(f));
+    return `10${supExp(exp)}`;
+  }
+  function supExp(n) {
+    const sup = { '-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹' };
+    return String(n).split('').map(c => sup[c] ?? c).join('');
+  }
+  function exampleFor(prefix) {
+    const map = { Y:'YJ', Z:'Zm', E:'EW', P:'PB', T:'THz', G:'GHz', M:'MΩ',
+      k:'kg', h:'hPa', da:'daL', d:'dL', c:'cm', m:'mm', μ:'μF', n:'nm',
+      p:'ps', f:'fs', a:'aJ', z:'zg', y:'yg' };
+    return map[prefix] || '';
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.unites = {
+    id:'unites', name:'Unités', icon:'⇌', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/constantes.js — Navigateur de constantes physiques.
+ *
+ * Affiche les constantes du catalogue avec recherche live et filtres
+ * par catégorie. Un click sur une constante :
+ *   - L'insère dans le presse-papier (et l'affiche en notif éphémère).
+ *   - (En option future : envoi vers Calculs en activant l'app.)
+ */
+(function (GR) {
+  'use strict';
+
+  let activeCat = null;
+  let query = '';
+  let elList, elSearch;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Constantes</span>
+      <span class="app-subtitle">CODATA + SI 2019 — utilisables directement dans Calculs</span>
+    `;
+    container.appendChild(head);
+
+    const root = document.createElement('div');
+    root.className = 'constants';
+    container.appendChild(root);
+
+    const search = document.createElement('div');
+    search.className = 'constants-search';
+    search.innerHTML = `
+      <input id="c-search" placeholder="Rechercher (Planck, Avogadro, gravité, μ₀…)">
+      <div class="seg" id="c-seg">
+        <button data-c="" class="active">TOUTES</button>
+        ${GR.data.constants.categories.map(([id, nm]) =>
+          `<button data-c="${id}">${nm}</button>`).join('')}
+      </div>
+    `;
+    root.appendChild(search);
+
+    elList = document.createElement('div');
+    elList.className = 'constants-list';
+    root.appendChild(elList);
+
+    elSearch = search.querySelector('#c-search');
+    elSearch.addEventListener('input', () => { query = elSearch.value.toLowerCase(); render(); });
+    search.querySelector('#c-seg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-c]'); if (!b) return;
+      activeCat = b.dataset.c || null;
+      search.querySelectorAll('#c-seg button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+
+    render();
+  }
+
+  function unmount() {}
+
+  function match(c) {
+    if (activeCat && c.cat !== activeCat) return false;
+    if (!query) return true;
+    return c.id.toLowerCase().includes(query)
+        || c.nm.toLowerCase().includes(query)
+        || c.sym.toLowerCase().includes(query);
+  }
+
+  function render() {
+    elList.innerHTML = '';
+    const list = GR.data.constants.list.filter(match);
+    if (!list.length) {
+      elList.innerHTML = '<p style="color:var(--ink-3);text-align:center;padding:var(--s-5)">Aucune constante ne correspond.</p>';
+      return;
+    }
+    list.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'const-card';
+      card.innerHTML = `
+        <div class="sym">${c.sym}</div>
+        <div class="desc">
+          <div><span class="nm">${c.nm}</span> <span class="cat">${c.cat}</span></div>
+          <div style="font-size:11px;color:var(--ink-3);margin-top:2px;font-family:var(--font-mono)">id : <strong>${c.id}</strong>${c.exact ? ' · valeur exacte (SI)' : ''}</div>
+          ${c.desc ? `<div style="font-size:11px;color:var(--ink-3);margin-top:2px;font-style:italic">${c.desc}</div>` : ''}
+        </div>
+        <div class="val">${c.value}${c.unit ? '' : ''}</div>
+      `;
+      card.addEventListener('click', () => {
+        // Copie l'id dans le presse-papier pour usage immédiat dans Calculs.
+        try { navigator.clipboard.writeText(c.id); } catch {}
+        flash(card);
+      });
+      elList.appendChild(card);
+    });
+  }
+
+  function flash(el) {
+    const old = el.style.background;
+    el.style.background = 'var(--mark)';
+    setTimeout(() => { el.style.background = old; }, 350);
+    // Notification globale courte.
+    toast(`« ${el.querySelector('strong').textContent} » copié → colle-le dans Calculs.`);
+  }
+
+  function toast(msg) {
+    let t = document.getElementById('grace-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'grace-toast';
+      t.style.cssText = `
+        position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+        background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;
+        font-size:13px;z-index:100;opacity:0;transition:opacity .2s`;
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 1800);
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.constantes = {
+    id:'constantes', name:'Constantes', icon:'ℏ', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/fonctions.js — Fonctions (table de valeurs uniquement, sans grapheur).
+ *
+ * On peut définir f, g, h, i (max 4 fonctions). Pour chacune, on saisit
+ * l'expression en x. On choisit ensuite un intervalle [x_min, x_max] et
+ * un pas, et on génère un tableau de valeurs.
+ *
+ * Note : le grapheur est laissé pour une étape future. La table seule
+ * couvre déjà la majorité des usages "voir comment varie f".
+ */
+(function (GR) {
+  'use strict';
+
+  const STORAGE = 'grace.fonctions.v1';
+  let funcs;
+  let table = { xmin:-5, xmax:5, step:0.5 };
+  let elBody;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE);
+      if (raw) {
+        const s = JSON.parse(raw);
+        funcs = s.funcs || ['x^2','2*x+1','',''];
+        table = s.table || table;
+        return;
+      }
+    } catch {}
+    funcs = ['x^2', '2*x+1', '', ''];
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE, JSON.stringify({ funcs, table })); } catch {}
+  }
+
+  function mount(container) {
+    container.innerHTML = '';
+    load();
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Fonctions</span>
+      <span class="app-subtitle">définition + table de valeurs (sans grapheur)</span>
+    `;
+    container.appendChild(head);
+
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    container.appendChild(elBody);
+
+    render();
+  }
+  function unmount() {}
+
+  function render() {
+    elBody.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3>Définitions</h3>
+        <div style="display:grid;grid-template-columns:40px 1fr;gap:8px;align-items:center">
+          ${['f','g','h','i'].map((nm,i) => `
+            <label>${nm}(x) =</label>
+            <input class="field" data-fi="${i}" value="${escape(funcs[i])}">
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="card" style="max-width:680px;margin-top:var(--s-3)">
+        <h3>Intervalle</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+          <div><div style="font-size:11px;color:var(--ink-3)">x min</div><input class="field" id="xmin" value="${table.xmin}"></div>
+          <div><div style="font-size:11px;color:var(--ink-3)">x max</div><input class="field" id="xmax" value="${table.xmax}"></div>
+          <div><div style="font-size:11px;color:var(--ink-3)">pas</div><input class="field" id="step" value="${table.step}"></div>
+          <button class="btn primary" id="go">Calculer</button>
+        </div>
+      </div>
+
+      <div id="tbl" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelectorAll('[data-fi]').forEach(inp => {
+      inp.addEventListener('input', e => { funcs[+e.target.dataset.fi] = e.target.value; save(); });
+    });
+    elBody.querySelector('#go').addEventListener('click', () => {
+      table.xmin = parseFloat(elBody.querySelector('#xmin').value);
+      table.xmax = parseFloat(elBody.querySelector('#xmax').value);
+      table.step = parseFloat(elBody.querySelector('#step').value);
+      save();
+      renderTable();
+    });
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbl = elBody.querySelector('#tbl');
+    const m = window.math;
+    // Compile chaque fonction pour évaluer rapidement.
+    const compiled = funcs.map(src => {
+      if (!src.trim()) return null;
+      try { return m.compile(src); } catch { return { error:true }; }
+    });
+    const xs = [];
+    for (let x = table.xmin; x <= table.xmax + 1e-12; x += table.step) xs.push(round(x));
+    let head = '<th>x</th>' + ['f','g','h','i'].map((nm,i) => funcs[i].trim() ? `<th>${nm}(x)</th>` : '').join('');
+    let rows = xs.map(x => {
+      const cells = compiled.map((c,i) => {
+        if (!funcs[i].trim()) return '';
+        if (!c || c.error) return '<td class="num">⚠</td>';
+        try { return `<td class="num">${fmt(c.evaluate({ x }))}</td>`; }
+        catch { return '<td class="num">⚠</td>'; }
+      }).join('');
+      return `<tr><td class="num">${fmt(x)}</td>${cells}</tr>`;
+    }).join('');
+    tbl.innerHTML = `<table class="gtable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function round(x) { return Math.round(x * 1e10) / 1e10; }
+  function fmt(x) {
+    if (typeof x === 'object' && x !== null && 're' in x) return `${fmt(x.re)}${x.im>=0?'+':''}${fmt(x.im)}i`;
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+  function escape(s) { return (s||'').replace(/"/g, '&quot;'); }
+
+  GR.apps = GR.apps || {};
+  GR.apps.fonctions = {
+    id:'fonctions', name:'Fonctions', icon:'ƒ', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/suites.js — Suites explicites et récurrentes.
+ *
+ * Explicite : u(n) en fonction de n.
+ * Récurrente d'ordre 1 : u(n) = expr(u(n-1)), avec u(0) donné.
+ * Récurrente d'ordre 2 : u(n) = expr(u(n-1), u(n-2)), avec u(0), u(1).
+ *
+ * Table de valeurs uniquement, sans grapheur. n est entier ≥ 0.
+ */
+(function (GR) {
+  'use strict';
+
+  const STORAGE = 'grace.suites.v1';
+  let s = null;
+  let elBody;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE);
+      if (raw) { s = JSON.parse(raw); return; }
+    } catch {}
+    s = {
+      kind: 'explicit',                  // 'explicit' | 'rec1' | 'rec2'
+      expr: '2*n + 1',
+      u0: 1, u1: 1,
+      nMin: 0, nMax: 15,
+    };
+  }
+  function save() { try { localStorage.setItem(STORAGE, JSON.stringify(s)); } catch {} }
+
+  function mount(container) {
+    container.innerHTML = '';
+    load();
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Suites</span>
+      <span class="app-subtitle">explicites et récurrentes (table de valeurs)</span>
+      <div class="app-tools">
+        <div class="seg" id="k-seg">
+          <button data-k="explicit" class="${s.kind==='explicit'?'active':''}">Explicite u(n)</button>
+          <button data-k="rec1" class="${s.kind==='rec1'?'active':''}">Récurrente ordre 1</button>
+          <button data-k="rec2" class="${s.kind==='rec2'?'active':''}">Récurrente ordre 2</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(head);
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    container.appendChild(elBody);
+
+    head.querySelector('#k-seg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-k]'); if (!b) return;
+      s.kind = b.dataset.k; save();
+      head.querySelectorAll('#k-seg button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    render();
+  }
+  function unmount() {}
+
+  function render() {
+    let extra = '';
+    if (s.kind === 'explicit') {
+      extra = `<label>u(n) =</label><input class="field" id="expr" value="${esc(s.expr)}">`;
+    } else if (s.kind === 'rec1') {
+      extra = `
+        <label>u(0) =</label><input class="field" id="u0" value="${s.u0}">
+        <label>u(n) =</label><input class="field" id="expr" value="${esc(s.expr)}" placeholder="ex: u + 2">
+      `;
+    } else {
+      extra = `
+        <label>u(0) =</label><input class="field" id="u0" value="${s.u0}">
+        <label>u(1) =</label><input class="field" id="u1" value="${s.u1}">
+        <label>u(n) =</label><input class="field" id="expr" value="${esc(s.expr)}" placeholder="ex: u + v">
+      `;
+    }
+    elBody.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3>Définition</h3>
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:center">
+          ${extra}
+        </div>
+        ${s.kind !== 'explicit' ? `<p style="font-size:11px;color:var(--ink-3);margin-top:8px">
+          Dans l'expression, <code>u</code> = u(n−1) ; ${s.kind==='rec2'?'<code>v</code> = u(n−2) ;':''} <code>n</code> = indice courant.
+        </p>` : ''}
+      </div>
+      <div class="card" style="max-width:680px;margin-top:var(--s-3)">
+        <h3>Intervalle d'indices</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+          <div><div style="font-size:11px;color:var(--ink-3)">n min</div><input class="field" id="nMin" value="${s.nMin}"></div>
+          <div><div style="font-size:11px;color:var(--ink-3)">n max</div><input class="field" id="nMax" value="${s.nMax}"></div>
+          <button class="btn primary" id="go">Calculer</button>
+        </div>
+      </div>
+      <div id="tbl" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      s.expr = elBody.querySelector('#expr').value;
+      if (elBody.querySelector('#u0')) s.u0 = parseFloat(elBody.querySelector('#u0').value);
+      if (elBody.querySelector('#u1')) s.u1 = parseFloat(elBody.querySelector('#u1').value);
+      s.nMin = parseInt(elBody.querySelector('#nMin').value, 10);
+      s.nMax = parseInt(elBody.querySelector('#nMax').value, 10);
+      save();
+      renderTable();
+    });
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbl = elBody.querySelector('#tbl');
+    const m = window.math;
+    let row = '';
+    try {
+      const compiled = m.compile(s.expr);
+      if (s.kind === 'explicit') {
+        for (let n = s.nMin; n <= s.nMax; n++) {
+          let v;
+          try { v = compiled.evaluate({ n }); } catch { v = '⚠'; }
+          row += `<tr><td class="num">${n}</td><td class="num">${fmt(v)}</td></tr>`;
+        }
+      } else if (s.kind === 'rec1') {
+        let u = s.u0;
+        for (let n = 0; n <= s.nMax; n++) {
+          if (n >= s.nMin) row += `<tr><td class="num">${n}</td><td class="num">${fmt(u)}</td></tr>`;
+          if (n < s.nMax) { try { u = compiled.evaluate({ u, n: n+1 }); } catch { u = NaN; } }
+        }
+      } else {
+        let prev2 = s.u0, prev1 = s.u1;
+        if (0 >= s.nMin) row += `<tr><td class="num">0</td><td class="num">${fmt(prev2)}</td></tr>`;
+        if (1 >= s.nMin) row += `<tr><td class="num">1</td><td class="num">${fmt(prev1)}</td></tr>`;
+        for (let n = 2; n <= s.nMax; n++) {
+          let next;
+          try { next = compiled.evaluate({ u:prev1, v:prev2, n }); } catch { next = NaN; }
+          if (n >= s.nMin) row += `<tr><td class="num">${n}</td><td class="num">${fmt(next)}</td></tr>`;
+          prev2 = prev1; prev1 = next;
+        }
+      }
+    } catch (e) {
+      tbl.innerHTML = `<div class="card" style="color:var(--bad)">Expression invalide : ${e.message}</div>`;
+      return;
+    }
+    tbl.innerHTML = `<table class="gtable"><thead><tr><th>n</th><th>u(n)</th></tr></thead><tbody>${row}</tbody></table>`;
+  }
+
+  function fmt(x) {
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+  function esc(s) { return (s||'').replace(/"/g, '&quot;'); }
+
+  GR.apps = GR.apps || {};
+  GR.apps.suites = {
+    id:'suites', name:'Suites', icon:'uₙ', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/equations.js — Résolveur d'équations.
+ *
+ * Trois modes :
+ *   - Linéaire / quadratique : saisie ax+b=0 ou ax²+bx+c=0 (formules fermées).
+ *   - Polynôme : entrée des coefficients → racines via math.js (Aberth/eig).
+ *   - Système linéaire : matrice A et vecteur b → résolution math.lusolve.
+ *
+ * On reste sur du numérique. Pour les racines symboliques, math.js a
+ * math.simplify mais pas un solveur symbolique général.
+ */
+(function (GR) {
+  'use strict';
+
+  let mode = 'poly';
+  let elBody;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Équations</span>
+      <span class="app-subtitle">linéaires, polynomiales, systèmes</span>
+      <div class="app-tools">
+        <div class="seg" id="eq-mode">
+          <button data-m="poly" class="active">Polynôme</button>
+          <button data-m="lin">Linéaire</button>
+          <button data-m="quad">Quadratique</button>
+          <button data-m="sys">Système</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(head);
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    container.appendChild(elBody);
+
+    head.querySelector('#eq-mode').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-m]'); if (!b) return;
+      mode = b.dataset.m;
+      head.querySelectorAll('#eq-mode button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    render();
+  }
+  function unmount() {}
+
+  function render() {
+    if (mode === 'lin') renderLin();
+    if (mode === 'quad') renderQuad();
+    if (mode === 'poly') renderPoly();
+    if (mode === 'sys') renderSys();
+  }
+
+  // ---- Linéaire ax + b = 0
+  function renderLin() {
+    elBody.innerHTML = `
+      <p style="color:var(--ink-3);margin:0 0 var(--s-3)">Résolution de <em>ax + b = 0</em>.</p>
+      <div class="card" style="display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;max-width:520px">
+        <label>a =</label><input class="field" id="a" value="2">
+        <label>b =</label><input class="field" id="b" value="-6">
+        <div></div><button class="btn primary" id="go">Résoudre</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const a = num('#a'), b = num('#b');
+      const out = elBody.querySelector('#out');
+      if (a === 0) {
+        out.innerHTML = b === 0 ? card('Infinité de solutions (0 = 0).') : card('Aucune solution (b ≠ 0).');
+      } else {
+        const x = -b/a;
+        out.innerHTML = card(`x = ${fmt(x)}`);
+      }
+    });
+  }
+
+  // ---- Quadratique ax² + bx + c = 0
+  function renderQuad() {
+    elBody.innerHTML = `
+      <p style="color:var(--ink-3);margin:0 0 var(--s-3)">Résolution de <em>ax² + bx + c = 0</em> dans ℂ.</p>
+      <div class="card" style="display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;max-width:520px">
+        <label>a =</label><input class="field" id="a" value="1">
+        <label>b =</label><input class="field" id="b" value="-3">
+        <label>c =</label><input class="field" id="c" value="2">
+        <div></div><button class="btn primary" id="go">Résoudre</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const a = num('#a'), b = num('#b'), c = num('#c');
+      const out = elBody.querySelector('#out');
+      if (a === 0) { out.innerHTML = card('a = 0 : utilise le mode Linéaire.'); return; }
+      const d = b*b - 4*a*c;
+      let res;
+      if (d > 0) {
+        const sq = Math.sqrt(d);
+        res = `Δ = ${fmt(d)} (deux racines réelles)
+               <div class="res">x₁ = ${fmt((-b + sq)/(2*a))}</div>
+               <div class="res">x₂ = ${fmt((-b - sq)/(2*a))}</div>`;
+      } else if (d === 0) {
+        res = `Δ = 0 (racine double)
+               <div class="res">x = ${fmt(-b/(2*a))}</div>`;
+      } else {
+        const sq = Math.sqrt(-d);
+        const re = -b/(2*a), im = sq/(2*a);
+        res = `Δ = ${fmt(d)} (deux racines complexes)
+               <div class="res">x₁ = ${fmt(re)} + ${fmt(im)}i</div>
+               <div class="res">x₂ = ${fmt(re)} − ${fmt(im)}i</div>`;
+      }
+      out.innerHTML = `<div class="card">${res}</div>`;
+    });
+  }
+
+  // ---- Polynôme général de degré n
+  function renderPoly() {
+    elBody.innerHTML = `
+      <p style="color:var(--ink-3);margin:0 0 var(--s-3)">
+        Entre les coefficients du plus haut degré au degré 0, séparés par des virgules.<br>
+        Ex : <code>1, -6, 11, -6</code> pour <em>x³ − 6x² + 11x − 6</em>.
+      </p>
+      <div class="card" style="display:grid;gap:8px;max-width:600px">
+        <input class="field" id="coefs" value="1, -6, 11, -6">
+        <button class="btn primary" id="go">Trouver les racines</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const raw = elBody.querySelector('#coefs').value.trim();
+      const out = elBody.querySelector('#out');
+      const coefs = raw.split(',').map(s => parseFloat(s));
+      if (coefs.some(isNaN) || coefs.length < 2) {
+        out.innerHTML = card('Liste de coefficients invalide.', 'bad'); return;
+      }
+      // math.js : polynomialRoot existe en v13.
+      try {
+        let roots;
+        if (typeof window.math.polynomialRoot === 'function') {
+          // Format math.js : coef du degré 0 au degré n.
+          roots = window.math.polynomialRoot(...coefs.slice().reverse());
+          if (!Array.isArray(roots)) roots = [roots];
+        } else {
+          // Fallback : matrice compagnon + valeurs propres.
+          roots = companionRoots(coefs);
+        }
+        const list = roots.map(r => `<div class="res">x = ${fmtRoot(r)}</div>`).join('');
+        out.innerHTML = `<div class="card">${list || '<p>Aucune racine trouvée.</p>'}</div>`;
+      } catch (e) {
+        out.innerHTML = card('Erreur : ' + e.message, 'bad');
+      }
+    });
+  }
+
+  function companionRoots(coefs) {
+    const n = coefs.length - 1;
+    const a0 = coefs[0];
+    // Construit la matrice compagnon n×n (forme "transposée" usuelle).
+    const M = Array.from({length:n}, () => Array(n).fill(0));
+    for (let i = 1; i < n; i++) M[i][i-1] = 1;
+    for (let i = 0; i < n; i++) M[i][n-1] = -coefs[n-i] / a0;
+    const eig = window.math.eigs(M, { precision: 1e-10 });
+    return eig.values.toArray ? eig.values.toArray() : eig.values;
+  }
+
+  // ---- Système linéaire AX = B
+  function renderSys() {
+    elBody.innerHTML = `
+      <p style="color:var(--ink-3);margin:0 0 var(--s-3)">
+        Entre la matrice <strong>A</strong> (lignes séparées par des points-virgules, valeurs par virgules)
+        et le vecteur <strong>B</strong>.
+      </p>
+      <div class="card" style="display:grid;grid-template-columns:80px 1fr;gap:8px;max-width:680px">
+        <label>A =</label><input class="field" id="A" value="2,1,-1; -3,-1,2; -2,1,2">
+        <label>B =</label><input class="field" id="B" value="8; -11; -3">
+        <div></div><button class="btn primary" id="go">Résoudre</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const Astr = elBody.querySelector('#A').value;
+      const Bstr = elBody.querySelector('#B').value;
+      const out = elBody.querySelector('#out');
+      try {
+        const A = parseMatrix(Astr);
+        const B = parseMatrix(Bstr);
+        const x = window.math.lusolve(A, B);
+        const arr = x.toArray ? x.toArray() : x;
+        const list = arr.map((row, i) => {
+          const v = Array.isArray(row) ? row[0] : row;
+          return `<div class="res">x<sub>${i+1}</sub> = ${fmt(v)}</div>`;
+        }).join('');
+        out.innerHTML = `<div class="card">${list}</div>`;
+      } catch (e) {
+        out.innerHTML = card('Erreur : ' + e.message, 'bad');
+      }
+    });
+  }
+
+  function parseMatrix(s) {
+    return s.split(';').map(row => row.split(',').map(v => parseFloat(v.trim())));
+  }
+
+  // ---- Helpers communs
+  function num(sel) { return parseFloat(elBody.querySelector(sel).value) || 0; }
+  function card(html, kind) {
+    return `<div class="card" style="color:${kind==='bad'?'var(--bad)':'inherit'}">${html}</div>`;
+  }
+  function fmt(x) {
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(10)).toString();
+  }
+  function fmtRoot(r) {
+    if (typeof r === 'object' && r !== null && 're' in r) {
+      const re = r.re, im = r.im;
+      if (Math.abs(im) < 1e-10) return fmt(re);
+      return `${fmt(re)} ${im > 0 ? '+' : '−'} ${fmt(Math.abs(im))}i`;
+    }
+    return fmt(r);
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.equations = {
+    id:'equations', name:'Équations', icon:'=', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/statistiques.js — Statistiques 1 et 2 variables.
+ *
+ * 1 variable : table de valeurs (+ effectifs optionnels) → moyenne,
+ *   médiane, écart-type (n et n−1), min/max/Q1/Q3, IQR, somme, variance.
+ * 2 variables : couples (x, y) → covariance, corrélation, droite de
+ *   régression linéaire y = a x + b et R².
+ */
+(function (GR) {
+  'use strict';
+
+  let mode = '1var';
+  let elBody;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Statistiques</span>
+      <span class="app-subtitle">une ou deux variables</span>
+      <div class="app-tools">
+        <div class="seg" id="st-mode">
+          <button data-m="1var" class="active">1 variable</button>
+          <button data-m="2var">2 variables</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(head);
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    container.appendChild(elBody);
+
+    head.querySelector('#st-mode').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-m]'); if (!b) return;
+      mode = b.dataset.m;
+      head.querySelectorAll('#st-mode button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    render();
+  }
+  function unmount() {}
+
+  function render() { mode === '1var' ? render1() : render2(); }
+
+  function render1() {
+    elBody.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3>Données (séparées par virgules ou espaces)</h3>
+        <input class="field" id="data" value="3, 7, 7, 8, 9, 12, 13, 14, 18, 21" style="width:100%">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input class="field" id="freq" placeholder="Effectifs (optionnel, mêmes longueurs)" style="flex:1">
+          <button class="btn primary" id="go">Calculer</button>
+        </div>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const xs = parseList(elBody.querySelector('#data').value);
+      const fs = parseList(elBody.querySelector('#freq').value);
+      const out = elBody.querySelector('#out');
+      if (!xs.length) { out.innerHTML = err('Pas de données.'); return; }
+      const data = (fs.length === xs.length)
+        ? expand(xs, fs)
+        : xs;
+      out.innerHTML = stats1(data);
+    });
+  }
+
+  function stats1(arr) {
+    const m = window.math;
+    const sorted = arr.slice().sort((a,b) => a-b);
+    const n = arr.length;
+    const sum = arr.reduce((a,b) => a+b, 0);
+    const mean = sum / n;
+    const variance = arr.reduce((s,x) => s + (x-mean)**2, 0) / n;
+    const varN_1 = n > 1 ? arr.reduce((s,x) => s + (x-mean)**2, 0) / (n-1) : NaN;
+    const std = Math.sqrt(variance);
+    const stdN_1 = Math.sqrt(varN_1);
+    const median = sorted[Math.floor(n/2)] * (n%2 ? 1 : 0.5) + (n%2 ? 0 : sorted[n/2 - 1] * 0.5);
+    const q1 = quantile(sorted, 0.25);
+    const q3 = quantile(sorted, 0.75);
+    return `
+      <div class="split">
+        ${stat('Effectif n', n)}
+        ${stat('Somme Σx', fmt(sum))}
+        ${stat('Moyenne x̄', fmt(mean))}
+        ${stat('Médiane', fmt(median))}
+        ${stat('Min / Max', `${fmt(sorted[0])}  /  ${fmt(sorted[n-1])}`)}
+        ${stat('Q1 / Q3', `${fmt(q1)}  /  ${fmt(q3)}`)}
+        ${stat('IQR', fmt(q3-q1))}
+        ${stat('Variance (σ²)', fmt(variance))}
+        ${stat('Écart-type σ (n)', fmt(std))}
+        ${stat('Écart-type s (n−1)', fmt(stdN_1))}
+      </div>
+    `;
+  }
+
+  function render2() {
+    elBody.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3>Couples (x, y)</h3>
+        <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;align-items:center">
+          <label>x =</label><input class="field" id="xs" value="1, 2, 3, 4, 5">
+          <label>y =</label><input class="field" id="ys" value="2.1, 4.0, 6.2, 7.9, 10.1">
+        </div>
+        <button class="btn primary" id="go" style="margin-top:8px">Régresser</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const xs = parseList(elBody.querySelector('#xs').value);
+      const ys = parseList(elBody.querySelector('#ys').value);
+      const out = elBody.querySelector('#out');
+      if (xs.length !== ys.length || !xs.length) { out.innerHTML = err('Les deux listes doivent avoir la même taille.'); return; }
+      out.innerHTML = stats2(xs, ys);
+    });
+  }
+
+  function stats2(xs, ys) {
+    const n = xs.length;
+    const mx = xs.reduce((a,b)=>a+b,0)/n;
+    const my = ys.reduce((a,b)=>a+b,0)/n;
+    let sxx=0, syy=0, sxy=0;
+    for (let i=0; i<n; i++) {
+      sxx += (xs[i]-mx)**2;
+      syy += (ys[i]-my)**2;
+      sxy += (xs[i]-mx)*(ys[i]-my);
+    }
+    const cov = sxy/n;
+    const corr = sxy / Math.sqrt(sxx*syy);
+    const a = sxy/sxx;
+    const b = my - a*mx;
+    const r2 = corr*corr;
+    return `
+      <div class="split">
+        ${stat('n', n)}
+        ${stat('Moyennes x̄ / ȳ', `${fmt(mx)}  /  ${fmt(my)}`)}
+        ${stat('Covariance', fmt(cov))}
+        ${stat('Corrélation r', fmt(corr))}
+        ${stat('Coeff. R²', fmt(r2))}
+        ${stat('Régression', `y = ${fmt(a)} x + ${fmt(b)}`)}
+      </div>
+    `;
+  }
+
+  function expand(xs, fs) {
+    const out = [];
+    for (let i = 0; i < xs.length; i++) for (let j = 0; j < fs[i]; j++) out.push(xs[i]);
+    return out;
+  }
+  function quantile(sorted, p) {
+    const idx = (sorted.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  }
+  function parseList(s) {
+    if (!s.trim()) return [];
+    return s.split(/[,\s]+/).map(Number).filter(x => !isNaN(x));
+  }
+  function fmt(x) {
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+  function stat(k, v) { return `<div class="card"><h3>${k}</h3><div class="res">${v}</div></div>`; }
+  function err(m) { return `<div class="card" style="color:var(--bad)">${m}</div>`; }
+
+  GR.apps = GR.apps || {};
+  GR.apps.statistiques = {
+    id:'statistiques', name:'Statistiques', icon:'σ', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/probabilites.js — Lois de probabilité usuelles.
+ *
+ * Implémente PDF/PMF, CDF, et fonctions inverses pour :
+ *   Binomiale, Poisson, Géométrique (discrètes)
+ *   Normale, Exponentielle, Uniforme, Student, χ², Fisher (continues)
+ *
+ * Tout est calculé "à la main" sans dépendance externe (math.js seul).
+ */
+(function (GR) {
+  'use strict';
+
+  let activeLaw = 'normal';
+  let elBody;
+
+  // Définitions : id → { nm, params: [...], pdf, cdf, mean, var, kind }
+  const LAWS = {
+    binom: {
+      nm:'Binomiale B(n, p)', kind:'discrete',
+      params:[{ id:'n', label:'n', def:10 }, { id:'p', label:'p', def:0.5 }],
+      pmf:(k,{n,p}) => binCoef(n,k) * p**k * (1-p)**(n-k),
+      cdf:(k,par) => sumK(0, Math.floor(k), j => LAWS.binom.pmf(j, par)),
+      mean:({n,p}) => n*p,
+      varc:({n,p}) => n*p*(1-p),
+    },
+    poisson: {
+      nm:'Poisson P(λ)', kind:'discrete',
+      params:[{ id:'lambda', label:'λ', def:3 }],
+      pmf:(k,{lambda}) => Math.exp(-lambda) * lambda**k / fact(k),
+      cdf:(k,par) => sumK(0, Math.floor(k), j => LAWS.poisson.pmf(j, par)),
+      mean:({lambda}) => lambda,
+      varc:({lambda}) => lambda,
+    },
+    geom: {
+      nm:'Géométrique G(p)', kind:'discrete',
+      params:[{ id:'p', label:'p', def:0.3 }],
+      pmf:(k,{p}) => k >= 1 ? p * (1-p)**(k-1) : 0,
+      cdf:(k,{p}) => k < 1 ? 0 : 1 - (1-p)**Math.floor(k),
+      mean:({p}) => 1/p,
+      varc:({p}) => (1-p)/(p*p),
+    },
+    normal: {
+      nm:'Normale N(μ, σ²)', kind:'continuous',
+      params:[{ id:'mu', label:'μ', def:0 }, { id:'sigma', label:'σ', def:1 }],
+      pdf:(x,{mu,sigma}) => Math.exp(-0.5*((x-mu)/sigma)**2) / (sigma*Math.sqrt(2*Math.PI)),
+      cdf:(x,{mu,sigma}) => 0.5 * (1 + erf((x-mu) / (sigma*Math.SQRT2))),
+      mean:({mu}) => mu,
+      varc:({sigma}) => sigma*sigma,
+    },
+    exp: {
+      nm:'Exponentielle E(λ)', kind:'continuous',
+      params:[{ id:'lambda', label:'λ', def:1 }],
+      pdf:(x,{lambda}) => x >= 0 ? lambda * Math.exp(-lambda*x) : 0,
+      cdf:(x,{lambda}) => x >= 0 ? 1 - Math.exp(-lambda*x) : 0,
+      mean:({lambda}) => 1/lambda,
+      varc:({lambda}) => 1/(lambda*lambda),
+    },
+    unif: {
+      nm:'Uniforme U(a, b)', kind:'continuous',
+      params:[{ id:'a', label:'a', def:0 }, { id:'b', label:'b', def:1 }],
+      pdf:(x,{a,b}) => x>=a && x<=b ? 1/(b-a) : 0,
+      cdf:(x,{a,b}) => x<a ? 0 : x>b ? 1 : (x-a)/(b-a),
+      mean:({a,b}) => (a+b)/2,
+      varc:({a,b}) => (b-a)**2/12,
+    },
+  };
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Probabilités</span>
+      <span class="app-subtitle">lois discrètes et continues usuelles</span>
+    `;
+    container.appendChild(head);
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    elBody.style.display = 'grid';
+    elBody.style.gridTemplateColumns = '200px 1fr';
+    elBody.style.gap = 'var(--s-4)';
+    container.appendChild(elBody);
+
+    // Liste des lois
+    const side = document.createElement('div');
+    side.style.cssText = 'background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px;height:fit-content';
+    Object.entries(LAWS).forEach(([id, L]) => {
+      const b = document.createElement('div');
+      b.className = 'units-cat' + (id === activeLaw ? ' active' : '');
+      b.textContent = L.nm;
+      b.addEventListener('click', () => { activeLaw = id; mount(container); });
+      side.appendChild(b);
+    });
+    elBody.appendChild(side);
+
+    // Panneau
+    const panel = document.createElement('div');
+    panel.id = 'prob-panel';
+    elBody.appendChild(panel);
+    renderLaw();
+  }
+  function unmount() {}
+
+  function renderLaw() {
+    const L = LAWS[activeLaw];
+    const panel = elBody.querySelector('#prob-panel');
+    panel.innerHTML = `
+      <div class="card">
+        <h3>${L.nm} <span style="font-size:11px;color:var(--ink-3);text-transform:none">— ${L.kind === 'discrete' ? 'discrète' : 'continue'}</span></h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">
+          ${L.params.map(p => `
+            <div>
+              <div style="font-size:11px;color:var(--ink-3)">${p.label}</div>
+              <input class="field" data-p="${p.id}" value="${p.def}" style="width:100%">
+            </div>`).join('')}
+          <div>
+            <div style="font-size:11px;color:var(--ink-3)">${L.kind === 'discrete' ? 'k' : 'x'}</div>
+            <input class="field" id="xval" value="${L.kind === 'discrete' ? '3' : '0.5'}" style="width:100%">
+          </div>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top:var(--s-3)" id="results"></div>
+    `;
+    const update = () => {
+      const par = {};
+      L.params.forEach(p => par[p.id] = parseFloat(panel.querySelector(`[data-p="${p.id}"]`).value));
+      const x = parseFloat(panel.querySelector('#xval').value);
+      const fx = L.kind === 'discrete' ? L.pmf(x, par) : L.pdf(x, par);
+      const Fx = L.cdf(x, par);
+      const mean = L.mean(par);
+      const varc = L.varc(par);
+      panel.querySelector('#results').innerHTML = `
+        ${stat(L.kind === 'discrete' ? 'P(X = k)' : 'f(x)', fmt(fx))}
+        ${stat('P(X ≤ ' + (L.kind==='discrete'?'k':'x') + ')', fmt(Fx))}
+        ${stat('P(X > ' + (L.kind==='discrete'?'k':'x') + ')', fmt(1 - Fx))}
+        ${stat('E[X]', fmt(mean))}
+        ${stat('Var[X]', fmt(varc))}
+        ${stat('σ', fmt(Math.sqrt(varc)))}
+      `;
+    };
+    panel.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
+    update();
+  }
+
+  // ---------- Helpers numériques ----------
+  function fact(n) { if (n < 2) return 1; let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+  function binCoef(n,k) {
+    if (k < 0 || k > n) return 0;
+    k = Math.min(k, n-k);
+    let r = 1;
+    for (let i = 0; i < k; i++) r = r * (n-i) / (i+1);
+    return r;
+  }
+  function sumK(a, b, fn) { let s=0; for(let k=a;k<=b;k++) s += fn(k); return s; }
+
+  // Erreur d'Abramowitz & Stegun (précision ~1e-7).
+  function erf(x) {
+    const sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    const a1=0.254829592, a2=-0.284496736, a3=1.421413741,
+          a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    const t = 1 / (1 + p*x);
+    const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x);
+    return sign * y;
+  }
+
+  function fmt(x) {
+    if (typeof x !== 'number' || isNaN(x)) return '—';
+    if (Math.abs(x) < 1e-6 && x !== 0) return x.toExponential(4);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+  function stat(k, v) { return `<div class="card"><h3>${k}</h3><div class="res">${v}</div></div>`; }
+
+  GR.apps = GR.apps || {};
+  GR.apps.probabilites = {
+    id:'probabilites', name:'Probabilités', icon:'P', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/regressions.js — Ajustements de modèles à des données (x, y).
+ *
+ * Modèles :
+ *   - linéaire        : y = a x + b
+ *   - affine pondéré  : y = a x + b (idem ; gardé en alias)
+ *   - polynomiale     : y = sum a_k x^k (degré au choix)
+ *   - puissance       : y = a x^b           (log-log)
+ *   - exponentielle   : y = a e^(bx)        (log linéaire en y)
+ *   - logarithmique   : y = a + b ln(x)
+ *
+ * Les modèles non linéaires sont linéarisés par changement de variable
+ * puis ajustés par moindres carrés.
+ */
+(function (GR) {
+  'use strict';
+
+  const MODELS = [
+    ['lin',  'Linéaire (y = a x + b)'],
+    ['poly', 'Polynomiale (degré n)'],
+    ['pow',  'Puissance (y = a · x^b)'],
+    ['exp',  'Exponentielle (y = a · e^{b x})'],
+    ['log',  'Logarithmique (y = a + b · ln x)'],
+  ];
+
+  let model = 'lin';
+  let elBody;
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Régressions</span>
+      <span class="app-subtitle">moindres carrés (linéarisations gérées en interne)</span>
+      <div class="app-tools">
+        <div class="seg" id="m-seg">
+          ${MODELS.map(([id, nm], i) =>
+            `<button data-m="${id}" ${i===0?'class="active"':''}>${nm.split(' ')[0]}</button>`).join('')}
+        </div>
+      </div>
+    `;
+    container.appendChild(head);
+    elBody = document.createElement('div');
+    elBody.className = 'app-body';
+    container.appendChild(elBody);
+
+    head.querySelector('#m-seg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-m]'); if (!b) return;
+      model = b.dataset.m;
+      head.querySelectorAll('#m-seg button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    render();
+  }
+  function unmount() {}
+
+  function render() {
+    elBody.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3>Données (couples x, y)</h3>
+        <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;align-items:center">
+          <label>x =</label><input class="field" id="xs" value="1,2,3,4,5,6,7,8">
+          <label>y =</label><input class="field" id="ys" value="2.1,4.0,8.9,16.1,25.2,36.0,49.1,63.9">
+        </div>
+        ${model === 'poly' ? `<div style="display:grid;grid-template-columns:60px 1fr;gap:8px;margin-top:8px"><label>degré</label><input class="field" id="deg" value="2"></div>` : ''}
+        <button class="btn primary" id="go" style="margin-top:8px">Ajuster</button>
+      </div>
+      <div id="out" style="margin-top:var(--s-4)"></div>
+    `;
+    elBody.querySelector('#go').addEventListener('click', () => {
+      const xs = parseList(elBody.querySelector('#xs').value);
+      const ys = parseList(elBody.querySelector('#ys').value);
+      const out = elBody.querySelector('#out');
+      if (xs.length !== ys.length || xs.length < 2) { out.innerHTML = err('Listes invalides.'); return; }
+      try {
+        if (model === 'lin')   return show(out, fitLinear(xs, ys));
+        if (model === 'poly')  return show(out, fitPoly(xs, ys, parseInt(elBody.querySelector('#deg').value, 10)));
+        if (model === 'pow')   return show(out, fitPower(xs, ys));
+        if (model === 'exp')   return show(out, fitExp(xs, ys));
+        if (model === 'log')   return show(out, fitLog(xs, ys));
+      } catch (e) {
+        out.innerHTML = err(e.message);
+      }
+    });
+  }
+
+  function show(out, r) {
+    const { eq, params, r2, residual } = r;
+    out.innerHTML = `
+      <div class="split">
+        <div class="card"><h3>Équation</h3><div class="res">${eq}</div></div>
+        <div class="card"><h3>R²</h3><div class="res">${fmt(r2)}</div></div>
+      </div>
+      <div class="card" style="margin-top:var(--s-3)">
+        <h3>Coefficients</h3>
+        <div style="font-family:var(--font-mono);font-size:13px">${
+          Object.entries(params).map(([k,v]) => `${k} = ${fmt(v)}`).join('  ·  ')
+        }</div>
+        ${residual ? `<div style="margin-top:8px;font-size:11px;color:var(--ink-3)">Somme des résidus² = ${fmt(residual)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // ---- Moindres carrés linéaire
+  function fitLinear(xs, ys) {
+    const n = xs.length;
+    const mx = mean(xs), my = mean(ys);
+    let sxx=0, sxy=0;
+    for (let i=0;i<n;i++){ sxx += (xs[i]-mx)**2; sxy += (xs[i]-mx)*(ys[i]-my); }
+    const a = sxy/sxx, b = my - a*mx;
+    return wrapFit(xs, ys, x => a*x + b, { a, b }, `y = ${fmt(a)} · x + ${fmt(b)}`);
+  }
+
+  // ---- Polynômes : résolution normale équations via math.js
+  function fitPoly(xs, ys, deg) {
+    const n = xs.length;
+    const m = window.math;
+    // Matrice de Vandermonde
+    const X = xs.map(x => Array.from({length:deg+1}, (_,k) => x**k));
+    const XT = m.transpose(X);
+    const A = m.multiply(XT, X);
+    const B = m.multiply(XT, ys);
+    const coefs = m.lusolve(A, B).map(r => r[0] || r);
+    const fy = x => coefs.reduce((s, c, k) => s + c * x**k, 0);
+    const eq = coefs.map((c, k) => `${fmt(c)}·x^${k}`).reverse().join(' + ');
+    const params = {};
+    coefs.forEach((c, k) => params[`a_${k}`] = c);
+    return wrapFit(xs, ys, fy, params, 'y = ' + eq);
+  }
+
+  function fitPower(xs, ys) {
+    if (xs.some(x => x <= 0) || ys.some(y => y <= 0)) throw new Error('Puissance : x et y doivent être > 0.');
+    const lx = xs.map(Math.log), ly = ys.map(Math.log);
+    const r = fitLinear(lx, ly);
+    const b = r.params.a, a = Math.exp(r.params.b);
+    return wrapFit(xs, ys, x => a * x**b, { a, b }, `y = ${fmt(a)} · x^{${fmt(b)}}`);
+  }
+  function fitExp(xs, ys) {
+    if (ys.some(y => y <= 0)) throw new Error('Exponentielle : y doit être > 0.');
+    const ly = ys.map(Math.log);
+    const r = fitLinear(xs, ly);
+    const b = r.params.a, a = Math.exp(r.params.b);
+    return wrapFit(xs, ys, x => a * Math.exp(b*x), { a, b }, `y = ${fmt(a)} · e^{${fmt(b)}·x}`);
+  }
+  function fitLog(xs, ys) {
+    if (xs.some(x => x <= 0)) throw new Error('Logarithmique : x doit être > 0.');
+    const lx = xs.map(Math.log);
+    const r = fitLinear(lx, ys);
+    return wrapFit(xs, ys, x => r.params.b + r.params.a * Math.log(x),
+      { a:r.params.b, b:r.params.a }, `y = ${fmt(r.params.b)} + ${fmt(r.params.a)} · ln(x)`);
+  }
+
+  function wrapFit(xs, ys, fy, params, eq) {
+    const my = mean(ys);
+    let ssr = 0, sst = 0;
+    for (let i = 0; i < xs.length; i++) {
+      ssr += (ys[i] - fy(xs[i]))**2;
+      sst += (ys[i] - my)**2;
+    }
+    return { eq, params, r2: 1 - ssr/sst, residual: ssr };
+  }
+  function mean(a) { return a.reduce((s,x)=>s+x,0)/a.length; }
+  function parseList(s) { return s.split(/[,\s]+/).map(Number).filter(x => !isNaN(x)); }
+  function fmt(x) {
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+  function err(m) { return `<div class="card" style="color:var(--bad)">${m}</div>`; }
+
+  GR.apps = GR.apps || {};
+  GR.apps.regressions = {
+    id:'regressions', name:'Régressions', icon:'⤢', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/tableur.js — Tableur minimaliste.
+ *
+ * Grille A1:Z50, formules style « =A1+B2*2 », « =SUM(A1:A10) ».
+ *   - Une cellule contient soit une valeur (parsée comme nombre),
+ *     soit une formule commençant par '='.
+ *   - Recalcul à chaque édition (l'ensemble du tableau, simple et suffisant
+ *     pour cette taille).
+ *
+ * Fonctions reconnues : SUM, AVG, MIN, MAX, COUNT, ainsi que toutes celles
+ * de math.js (sin, cos, sqrt…). Plages : A1:A10 → [A1, A2, …, A10].
+ */
+(function (GR) {
+  'use strict';
+
+  const STORAGE = 'grace.tableur.v1';
+  const COLS = 12; // A..L (suffisant en initial, on peut étendre)
+  const ROWS = 30;
+  const COL_NAMES = Array.from({length:COLS}, (_,i) => String.fromCharCode(65 + i));
+
+  let cells; // map "A1" -> string brute
+  let elBody;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE);
+      if (raw) { cells = JSON.parse(raw); return; }
+    } catch {}
+    cells = {};
+  }
+  function save() { try { localStorage.setItem(STORAGE, JSON.stringify(cells)); } catch {} }
+
+  function mount(container) {
+    container.innerHTML = '';
+    load();
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Tableur</span>
+      <span class="app-subtitle">A1:${COL_NAMES[COLS-1]}${ROWS} — formules « =A1+B2 », « =SUM(A1:A10) »</span>
+      <div class="app-tools">
+        <button class="btn danger" id="clear">Vider</button>
+      </div>
+    `;
+    container.appendChild(head);
+
+    elBody = document.createElement('div');
+    elBody.className = 'spreadsheet';
+    container.appendChild(elBody);
+
+    head.querySelector('#clear').addEventListener('click', () => {
+      if (confirm('Vider toutes les cellules ?')) { cells = {}; save(); render(); }
+    });
+    render();
+  }
+  function unmount() {}
+
+  function render() {
+    const tbl = document.createElement('table');
+    let h = '<tr><th class="corner"></th>';
+    for (const c of COL_NAMES) h += `<th class="col">${c}</th>`;
+    h += '</tr>';
+    tbl.innerHTML = h;
+    const computed = computeAll();
+    for (let r = 1; r <= ROWS; r++) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<th class="row">${r}</th>`;
+      for (const c of COL_NAMES) {
+        const key = c + r;
+        const raw = cells[key] ?? '';
+        const isFormula = raw.startsWith('=');
+        const td = document.createElement('td');
+        if (isFormula) td.classList.add('computed');
+        const input = document.createElement('input');
+        input.value = raw;
+        input.dataset.k = key;
+        // Affiche la valeur calculée quand non focus, la formule en édition.
+        input.addEventListener('focus', () => { input.value = cells[key] ?? ''; });
+        input.addEventListener('blur', () => {
+          cells[key] = input.value;
+          save();
+          render();
+        });
+        if (document.activeElement && document.activeElement.dataset?.k === key) {
+          // garde la formule
+        } else if (isFormula) {
+          const v = computed[key];
+          input.value = v === null ? '' : v.error ? '#ERR' : fmt(v.value);
+        }
+        td.appendChild(input);
+        tr.appendChild(td);
+      }
+      tbl.appendChild(tr);
+    }
+    elBody.innerHTML = '';
+    elBody.appendChild(tbl);
+  }
+
+  // ---------- Calcul ----------
+  function computeAll() {
+    const out = {};
+    const stack = new Set();
+    function val(k) {
+      if (out[k]) return out[k];
+      if (stack.has(k)) { out[k] = { error:true, msg:'cycle' }; return out[k]; }
+      const raw = cells[k];
+      if (!raw) { out[k] = null; return null; }
+      if (!raw.startsWith('=')) {
+        const n = Number(raw);
+        out[k] = isNaN(n) ? { value: raw } : { value: n };
+        return out[k];
+      }
+      stack.add(k);
+      try {
+        const result = window.math.evaluate(transform(raw.slice(1), val));
+        out[k] = { value: result };
+      } catch (e) {
+        out[k] = { error:true, msg:e.message };
+      }
+      stack.delete(k);
+      return out[k];
+    }
+    for (const k of Object.keys(cells)) val(k);
+    // Petit hack : on inclut les non-formules pour l'affichage uniforme.
+    return out;
+  }
+
+  // Transforme la formule : étend les plages A1:A10 et remplace les
+  // références par leur valeur (récursive via `get`).
+  function transform(expr, getVal) {
+    // Étend les plages
+    expr = expr.replace(/\b([A-Z])(\d+):([A-Z])(\d+)\b/g, (_, c1, r1, c2, r2) => {
+      const a = c1.charCodeAt(0), b = c2.charCodeAt(0);
+      const list = [];
+      for (let cc = Math.min(a,b); cc <= Math.max(a,b); cc++) {
+        for (let rr = Math.min(+r1, +r2); rr <= Math.max(+r1, +r2); rr++) {
+          list.push(String.fromCharCode(cc) + rr);
+        }
+      }
+      return '[' + list.join(',') + ']';
+    });
+    // Remplace références A1 par leur valeur numérique (0 si vide / non num).
+    expr = expr.replace(/\b([A-Z])(\d+)\b/g, (_, c, r) => {
+      const v = getVal(c + r);
+      if (!v || v.error || typeof v.value !== 'number') return '0';
+      return '(' + v.value + ')';
+    });
+    // Alias français/maj
+    expr = expr.replace(/\bSUM\b/g, 'sum')
+               .replace(/\bAVG\b/g, 'mean')
+               .replace(/\bAVERAGE\b/g, 'mean')
+               .replace(/\bMIN\b/g, 'min')
+               .replace(/\bMAX\b/g, 'max')
+               .replace(/\bCOUNT\b/g, 'length');
+    return expr;
+  }
+
+  function fmt(x) {
+    if (typeof x !== 'number') return String(x);
+    if (Number.isInteger(x)) return String(x);
+    return parseFloat(x.toPrecision(8)).toString();
+  }
+
+  GR.apps = GR.apps || {};
+  GR.apps.tableur = {
+    id:'tableur', name:'Tableur', icon:'⊞', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * apps/reglages.js — Réglages globaux.
+ *
+ * - Thème clair / sombre (synchronisé avec le bouton de la sidebar)
+ * - Mode angulaire par défaut
+ * - Précision d'affichage
+ * - Réinitialiser : variables, historique, ou tout l'état
+ * - Infos sur l'app
+ */
+(function (GR) {
+  'use strict';
+
+  function mount(container) {
+    container.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'app-header';
+    head.innerHTML = `
+      <span class="app-title">Réglages</span>
+      <span class="app-subtitle">préférences locales (stockées dans ton navigateur)</span>
+    `;
+    container.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'settings';
+    body.innerHTML = `
+      <div class="group">
+        <h3>Apparence</h3>
+        <div class="row">
+          <div>
+            <div class="lbl">Thème</div>
+            <div class="hlp">Bascule aussi avec <kbd>Ctrl</kbd>+<kbd>T</kbd>.</div>
+          </div>
+          <div class="seg" id="seg-theme">
+            <button data-v="light">Clair</button>
+            <button data-v="dark">Sombre</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Calculs</h3>
+        <div class="row">
+          <div>
+            <div class="lbl">Mode angulaire par défaut</div>
+            <div class="hlp">Modifiable à la volée dans l'app Calculs.</div>
+          </div>
+          <div class="seg" id="seg-angle">
+            <button data-v="rad">RAD</button>
+            <button data-v="deg">DEG</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Données</h3>
+        <div class="row">
+          <div>
+            <div class="lbl">Effacer l'historique</div>
+            <div class="hlp">Supprime tous les calculs précédents.</div>
+          </div>
+          <button class="btn danger" id="btn-clear-hist">Effacer</button>
+        </div>
+        <div class="row">
+          <div>
+            <div class="lbl">Effacer les variables A..Z</div>
+            <div class="hlp">N'affecte ni constantes ni mode.</div>
+          </div>
+          <button class="btn danger" id="btn-clear-vars">Effacer</button>
+        </div>
+        <div class="row">
+          <div>
+            <div class="lbl">Réinitialiser tout l'état</div>
+            <div class="hlp">Tout (thème, variables, historique). Recharge la page après.</div>
+          </div>
+          <button class="btn danger" id="btn-reset">Réinitialiser</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>À propos</h3>
+        <div style="padding:var(--s-3);font-size:13px;color:var(--ink-2);line-height:1.6">
+          <p style="margin:0 0 var(--s-2)"><strong>Grace</strong> — recréation libre d'une NumWorks adaptée desktop.</p>
+          <p style="margin:0 0 var(--s-2)">Bibliothèques : <code>math.js</code> (calcul), <code>KaTeX</code> (rendu LaTeX).</p>
+          <p style="margin:0;font-size:11px;color:var(--ink-3)">Tout fonctionne hors-ligne après le premier chargement (les CDN sont mis en cache par le navigateur).</p>
+        </div>
+      </div>
+    `;
+    container.appendChild(body);
+
+    // Branchements
+    const segTheme = body.querySelector('#seg-theme');
+    segTheme.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.v === GR.state.get().theme);
+      b.addEventListener('click', () => {
+        document.body.dataset.theme = b.dataset.v;
+        GR.state.set({ theme: b.dataset.v });
+        segTheme.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      });
+    });
+    const segAngle = body.querySelector('#seg-angle');
+    segAngle.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.v === GR.engine.getAngleMode());
+      b.addEventListener('click', () => {
+        GR.engine.setAngleMode(b.dataset.v);
+        GR.state.set({ angleMode: b.dataset.v });
+        segAngle.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      });
+    });
+    body.querySelector('#btn-clear-hist').addEventListener('click', () => {
+      if (confirm('Effacer tout l\'historique ?')) GR.state.clearHistory();
+    });
+    body.querySelector('#btn-clear-vars').addEventListener('click', () => {
+      if (confirm('Effacer toutes les variables utilisateur ?')) GR.engine.clearVars();
+    });
+    body.querySelector('#btn-reset').addEventListener('click', () => {
+      if (confirm('Tout réinitialiser ? Cette action recharge la page.')) {
+        try { localStorage.removeItem('grace.state.v1'); } catch {}
+        location.reload();
+      }
+    });
+  }
+
+  function unmount() {}
+
+  GR.apps = GR.apps || {};
+  GR.apps.reglages = {
+    id:'reglages', name:'Réglages', icon:'⚙', available:true,
+    mount, unmount,
+  };
+
+})(window.GR = window.GR || {});
+
+</script>
+  <script>
+/**
+ * main.js — Bootstrap de l'application.
+ *
+ * - Liste statique des apps (sans Python ni Géométrie : retirées sur
+ *   décision projet).
+ * - Routeur : mount/unmount.
+ * - Branchement boutons globaux + raccourcis.
+ */
+(function (GR) {
+  'use strict';
+
+  // 12 apps, ordre type NumWorks adapté.
+  const APP_REGISTRY = [
+    { id:'calculs',     name:'Calculs',          icon:'∑',  shortcut:'Ctrl+1' },
+    { id:'fonctions',   name:'Fonctions',        icon:'ƒ',  shortcut:'Ctrl+2' },
+    { id:'equations',   name:'Équations',        icon:'=',  shortcut:'Ctrl+3' },
+    { id:'statistiques',name:'Statistiques',     icon:'σ',  shortcut:'Ctrl+4' },
+    { id:'probabilites',name:'Probabilités',     icon:'P',  shortcut:'Ctrl+5' },
+    { id:'regressions', name:'Régressions',      icon:'⤢',  shortcut:'Ctrl+6' },
+    { id:'suites',      name:'Suites',           icon:'uₙ', shortcut:'Ctrl+7' },
+    { id:'tableur',     name:'Tableur',          icon:'⊞',  shortcut:'Ctrl+8' },
+    { id:'unites',      name:'Unités',           icon:'⇌',  shortcut:'Ctrl+9' },
+    { id:'constantes',  name:'Constantes',       icon:'ℏ' },
+    { id:'periodique',  name:'Tableau périodique', icon:'P̲e' },
+    { id:'reglages',    name:'Réglages',         icon:'⚙' },
+  ];
+
+  let currentApp = null;
+  let elMain, elSidebarList, elVkb, elVkbToggle, elThemeToggle;
+
+  function start() {
+    elMain        = document.getElementById('main');
+    elSidebarList = document.getElementById('app-list');
+    elVkb         = document.getElementById('vkb');
+    elVkbToggle   = document.getElementById('vkb-toggle');
+    elThemeToggle = document.getElementById('theme-toggle');
+
+    const s = GR.state.get();
+    document.body.dataset.theme = s.theme;
+    if (GR.engine && s.angleMode) GR.engine.setAngleMode(s.angleMode);
+
+    buildSidebar();
+    bindGlobalControls();
+    registerShortcuts();
+    GR.keyboard.init();
+
+    const initial = GR.apps[s.currentApp] ? s.currentApp : 'calculs';
+    activate(initial);
+    setVkb(s.vkbOpen);
+  }
+
+  function buildSidebar() {
+    elSidebarList.innerHTML = '';
+    APP_REGISTRY.forEach(meta => {
+      const impl = GR.apps[meta.id];
+      const btn = document.createElement('button');
+      btn.className = 'app-link';
+      btn.dataset.app = meta.id;
+      btn.innerHTML = `
+        <span class="icon">${meta.icon}</span>
+        <span class="label">${meta.name}</span>
+        ${meta.shortcut ? `<span class="shortcut">${meta.shortcut.replace('Ctrl+','⌃')}</span>` : ''}
+      `;
+      if (!impl || !impl.available) {
+        btn.classList.add('disabled');
+        btn.title = 'Bientôt disponible';
+      }
+      btn.addEventListener('click', () => activate(meta.id));
+      elSidebarList.appendChild(btn);
+    });
+  }
+
+  function activate(appId) {
+    const impl = GR.apps[appId];
+    if (currentApp && currentApp.unmount) { try { currentApp.unmount(); } catch {} }
+    currentApp = null;
+
+    elSidebarList.querySelectorAll('.app-link').forEach(b =>
+      b.classList.toggle('active', b.dataset.app === appId));
+
+    if (!impl || !impl.available) {
+      renderComingSoon(appId);
+      GR.state.set({ currentApp: appId });
+      return;
+    }
+
+    impl.mount(elMain);
+    currentApp = impl;
+    GR.state.set({ currentApp: appId });
+
+    if (impl.renderVKB) impl.renderVKB(elVkb);
+    else elVkb.innerHTML = '<p style="color:var(--ink-4);padding:var(--s-4);text-align:center">Pas de clavier virtuel pour cette app.</p>';
+  }
+
+  function renderComingSoon(appId) {
+    const meta = APP_REGISTRY.find(a => a.id === appId) || { name: appId };
+    elMain.innerHTML = `
+      <div class="app-header"><span class="app-title">${meta.name}</span></div>
+      <div class="coming-soon">
+        <h2>Bientôt</h2>
+        <p>Cette application n'est pas encore implémentée.</p>
+        <p style="margin-top:12px;font-size:12px">
+          Retour à <strong>Calculs</strong> avec <kbd>Ctrl</kbd>+<kbd>1</kbd> ou <kbd>Échap</kbd>.
+        </p>
+      </div>
+    `;
+  }
+
+  function bindGlobalControls() {
+    elThemeToggle.addEventListener('click', toggleTheme);
+    elVkbToggle.addEventListener('click', () => setVkb(!GR.state.get().vkbOpen));
+  }
+
+  function toggleTheme() {
+    const cur = GR.state.get().theme;
+    const next = cur === 'light' ? 'dark' : 'light';
+    document.body.dataset.theme = next;
+    GR.state.set({ theme: next });
+  }
+
+  function setVkb(open) {
+    elVkb.hidden = !open;
+    elVkbToggle.classList.toggle('active', open);
+    GR.state.set({ vkbOpen: open });
+    if (open && currentApp && currentApp.renderVKB) currentApp.renderVKB(elVkb);
+  }
+
+  function registerShortcuts() {
+    APP_REGISTRY.forEach(meta => {
+      if (!meta.shortcut) return;
+      GR.keyboard.register(meta.shortcut, meta.name, () => activate(meta.id));
+    });
+    GR.keyboard.register('Esc',    'Retour Calculs',  () => activate('calculs'));
+    GR.keyboard.register('Ctrl+T', 'Thème',           toggleTheme);
+    GR.keyboard.register('Ctrl+K', 'Clavier virtuel', () => setVkb(!GR.state.get().vkbOpen));
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+
+})(window.GR = window.GR || {});
+
+</script>
+</body>
+</html>

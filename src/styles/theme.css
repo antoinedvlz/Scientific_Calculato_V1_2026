@@ -1,0 +1,83 @@
+/* ============================================================
+   Design tokens — Grace.
+   Palette inspirée NumWorks : jaune signature, blancs cassés,
+   contrastes francs. Bascule clair/sombre via [data-theme].
+   ============================================================ */
+
+:root {
+  /* Rayons : volontairement petits, papier/calculatrice. */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+
+  /* Espacement : grille de 4px. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* Typographies — empilées sans dépendance externe. */
+  --font-sans: "Inter", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-num:  "Iowan Old Style", "Charter", Georgia, serif; /* nombres : un peu de chair */
+
+  --t-fast: 90ms cubic-bezier(.2,.7,.3,1);
+  --t-mid:  180ms cubic-bezier(.2,.7,.3,1);
+
+  /* Couleurs absolues partagées. */
+  --c-yellow: #fcc92a;
+  --c-yellow-deep: #e8b400;
+  --c-red:    #d4452b;
+  --c-blue:   #2e6bd4;
+  --c-green:  #2d8a4a;
+  --c-purple: #7a4eb0;
+}
+
+/* ============== Thème clair ============== */
+[data-theme="light"] {
+  --bg:         #f3efe7;   /* papier cassé */
+  --bg-2:       #faf6ee;   /* surface élevée */
+  --bg-3:       #ffffff;   /* champs */
+  --bg-sunk:    #ece6da;   /* enfoncé (sidebar) */
+  --ink:        #1c1a17;   /* texte principal */
+  --ink-2:      #4a4742;
+  --ink-3:      #8a857e;
+  --ink-4:      #b6b1a8;
+  --line:       #d8d2c6;
+  --line-2:     #c4bdae;
+  --accent:     var(--c-yellow);
+  --accent-deep:var(--c-yellow-deep);
+  --on-accent:  #1c1a17;
+  --good:       var(--c-green);
+  --bad:        var(--c-red);
+  --info:       var(--c-blue);
+  --mark:       #fff3b0;   /* surlignage */
+  --grid:       rgba(0,0,0,.05);
+}
+
+/* ============== Thème sombre ============== */
+[data-theme="dark"] {
+  --bg:         #16161a;
+  --bg-2:       #1d1d22;
+  --bg-3:       #25252c;
+  --bg-sunk:    #111114;
+  --ink:        #ece9e3;
+  --ink-2:      #b9b4ab;
+  --ink-3:      #7d7a73;
+  --ink-4:      #4e4b46;
+  --line:       #2e2e36;
+  --line-2:     #3a3a44;
+  --accent:     var(--c-yellow);
+  --accent-deep:var(--c-yellow-deep);
+  --on-accent:  #1c1a17;
+  --good:       #59c576;
+  --bad:        #ff6b58;
+  --info:       #6fa4ff;
+  --mark:       #5a4a14;
+  --grid:       rgba(255,255,255,.04);
+}

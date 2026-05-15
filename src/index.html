@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1024">
+  <title>Grace</title>
+
+  <!-- Librairies externes (CDN) -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        crossorigin="anonymous">
+  <script defer
+          src="https://cdn.jsdelivr.net/npm/mathjs@13.0.3/lib/browser/math.min.js"
+          crossorigin="anonymous"></script>
+  <script defer
+          src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+          crossorigin="anonymous"></script>
+
+  <!-- Styles internes -->
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/base.css">
+</head>
+<body data-theme="light">
+  <div id="app">
+    <!-- Barre latérale gauche : liste des applications -->
+    <aside id="sidebar" aria-label="Applications">
+      <div class="brand">
+        <span class="brand-mark">∑</span>
+        <span class="brand-name">Grace</span>
+        <span class="brand-tag">v0.2</span>
+      </div>
+      <nav id="app-list" role="navigation"></nav>
+      <div class="sidebar-footer">
+        <button id="theme-toggle" class="icon-btn" title="Basculer thème (Ctrl+T)">◐</button>
+        <button id="vkb-toggle" class="icon-btn" title="Clavier virtuel (Ctrl+K)">⌨</button>
+      </div>
+    </aside>
+
+    <!-- Zone principale : l'app courante s'y monte -->
+    <main id="main" role="main"></main>
+
+    <!-- Clavier virtuel repliable, à droite -->
+    <aside id="vkb" aria-label="Clavier virtuel" hidden></aside>
+  </div>
+
+  <!-- Scripts internes : ordre = ordre de dépendance -->
+  <!-- IIFE qui attachent au namespace global window.GR -->
+  <script defer src="js/state.js"></script>
+  <script defer src="js/latex.js"></script>
+  <!-- Données : doivent être disponibles avant l'engine (qui injecte les constantes). -->
+  <script defer src="js/data/periodic.js"></script>
+  <script defer src="js/data/constants.js"></script>
+  <script defer src="js/data/units.js"></script>
+  <script defer src="js/math-engine.js"></script>
+  <script defer src="js/keyboard.js"></script>
+  <!-- Apps -->
+  <script defer src="js/apps/calculs.js"></script>
+  <script defer src="js/apps/periodique.js"></script>
+  <script defer src="js/apps/unites.js"></script>
+  <script defer src="js/apps/constantes.js"></script>
+  <script defer src="js/apps/fonctions.js"></script>
+  <script defer src="js/apps/suites.js"></script>
+  <script defer src="js/apps/equations.js"></script>
+  <script defer src="js/apps/statistiques.js"></script>
+  <script defer src="js/apps/probabilites.js"></script>
+  <script defer src="js/apps/regressions.js"></script>
+  <script defer src="js/apps/tableur.js"></script>
+  <script defer src="js/apps/reglages.js"></script>
+  <script defer src="js/main.js"></script>
+</body>
+</html>
